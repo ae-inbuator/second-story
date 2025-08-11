@@ -12,41 +12,56 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         className={cn(
-          // Base styles - luxury focused
-          "inline-flex items-center justify-center font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-luxury-gold focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 tracking-wider uppercase text-xs",
+          // Base styles - minimal luxury with microanimations
+          "relative overflow-hidden inline-flex items-center justify-center font-light transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 tracking-wider uppercase text-xs group",
           {
-            // Luxury primary button - gold background
-            'bg-luxury-gold text-black hover:bg-white hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl border border-luxury-gold': variant === 'luxury',
+            // Luxury primary button - black with microanimations
+            'bg-black text-white border border-black hover:shadow-lg hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0 active:scale-[0.98]': variant === 'luxury',
             
-            // Luxury ghost button - transparent with gold border
-            'border border-luxury-gold text-luxury-gold bg-transparent hover:bg-luxury-gold hover:text-black hover:scale-[1.02] active:scale-[0.98]': variant === 'luxury-ghost',
+            // Luxury ghost button - animated fill effect
+            'border border-black text-black bg-transparent hover:text-white hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md active:translate-y-0 active:scale-[0.98]': variant === 'luxury-ghost',
             
-            // Luxury outline - white border
-            'border border-white text-white bg-transparent hover:bg-white hover:text-black hover:scale-[1.02] active:scale-[0.98]': variant === 'luxury-outline',
+            // Luxury outline - subtle animations
+            'border border-gray-800 text-gray-800 bg-transparent hover:text-white hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-[0.98]': variant === 'luxury-outline',
             
-            // Destructive - red tones
-            'bg-red-500 text-white hover:bg-red-600 hover:scale-[1.02] active:scale-[0.98] border border-red-500': variant === 'destructive',
+            // Destructive - pulse effect
+            'bg-white text-red-600 border border-red-600 hover:bg-red-50 hover:scale-[1.02] hover:shadow-md active:scale-[0.98]': variant === 'destructive',
             
-            // Secondary - muted
-            'bg-gray-800 text-gray-200 hover:bg-gray-700 hover:text-white border border-gray-700 hover:border-gray-600': variant === 'secondary',
+            // Secondary - subtle lift
+            'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 hover:-translate-y-0.5 hover:shadow-sm': variant === 'secondary',
             
             // Ghost - minimal
-            'text-gray-400 hover:text-white hover:bg-gray-900/50': variant === 'ghost',
+            'text-gray-600 hover:text-black hover:bg-gray-50': variant === 'ghost',
             
             // Link - text only
-            'text-luxury-gold underline-offset-4 hover:underline bg-transparent border-none': variant === 'link',
+            'text-black underline-offset-4 hover:underline bg-transparent border-none': variant === 'link',
           },
           {
-            'h-10 px-4 py-2 rounded-md': size === 'default',
-            'h-8 px-3 py-1.5 rounded text-xs': size === 'sm',
-            'h-12 px-8 py-3 rounded-lg text-sm': size === 'lg',
-            'h-10 w-10 rounded-md': size === 'icon',
+            'h-11 px-6 py-2': size === 'default',
+            'h-9 px-4 py-1.5 text-xs': size === 'sm',
+            'h-12 px-8 py-3 text-sm': size === 'lg',
+            'h-10 w-10': size === 'icon',
           },
           className
         )}
         ref={ref}
         {...props}
-      />
+      >
+        {/* Shimmer effect for luxury buttons */}
+        {(variant === 'luxury' || variant === 'luxury-ghost') && (
+          <span className="absolute inset-0 -left-full group-hover:left-full transition-all duration-700 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        )}
+        
+        {/* Background fill animation for ghost button */}
+        {variant === 'luxury-ghost' && (
+          <span className="absolute inset-0 bg-black scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+        )}
+        
+        {/* Content wrapper to stay above animations */}
+        <span className="relative z-10">
+          {props.children}
+        </span>
+      </button>
     )
   }
 )

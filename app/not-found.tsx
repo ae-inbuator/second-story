@@ -30,20 +30,12 @@ export default function NotFound() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden relative">
-      {/* Parallax Background */}
-      <div 
-        className="absolute inset-0 opacity-20"
-        style={{ transform: `translateY(${scrollY * 0.5}px)` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black z-10" />
-        <LuxuryImage
-          src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1920&h=1080&fit=crop"
-          alt="Luxury fashion background"
-          fill
-          priority
-          className="object-cover"
-        />
+    <div className="min-h-screen bg-white text-black overflow-hidden relative">
+      {/* Clean Background */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 1px, transparent 15px)`,
+        }} />
       </div>
       
       {/* Content */}
@@ -66,7 +58,7 @@ export default function NotFound() {
               alt="Second Story" 
               width={240} 
               height={72} 
-              className="mx-auto opacity-80"
+              className="mx-auto opacity-90"
               priority
             />
           </motion.div>
@@ -78,7 +70,7 @@ export default function NotFound() {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="mb-8"
           >
-            <h1 className="font-playfair text-8xl sm:text-9xl lg:text-[12rem] font-light text-luxury-gold leading-none">
+            <h1 className="font-playfair text-8xl sm:text-9xl lg:text-[12rem] font-light text-gray-300 leading-none">
               404
             </h1>
           </motion.div>
@@ -90,13 +82,13 @@ export default function NotFound() {
             transition={{ delay: 0.4, duration: 0.6 }}
             className="mb-12"
           >
-            <p className="text-luxury-gold text-sm tracking-[0.3em] uppercase mb-4">
+            <p className="text-gray-600 text-sm tracking-[0.3em] uppercase mb-4">
               Page Not Found
             </p>
             <h2 className="font-playfair text-3xl sm:text-4xl lg:text-5xl mb-6">
               This Story Hasn't Been Written Yet
             </h2>
-            <p className="text-xl text-gray-300 font-light leading-relaxed max-w-lg mx-auto">
+            <p className="text-xl text-gray-600 font-light leading-relaxed max-w-lg mx-auto">
               The page you're looking for doesn't exist. Perhaps it was moved, or you've discovered an uncharted chapter of our collection.
             </p>
           </motion.div>
@@ -109,30 +101,30 @@ export default function NotFound() {
             className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
           >
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ y: -2, scale: 1.02 }}
+              whileTap={{ y: 0, scale: 0.98 }}
               onClick={() => router.back()}
-              className="btn-luxury-ghost px-6 py-3 text-white border-white hover:bg-white hover:text-black flex items-center justify-center gap-3"
+              className="btn-luxury-ghost px-6 py-3 flex items-center justify-center gap-3"
             >
               <ArrowLeft className="w-5 h-5" />
               <span>Go Back</span>
             </motion.button>
             
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ y: -2, scale: 1.02 }}
+              whileTap={{ y: 0, scale: 0.98 }}
               onClick={() => router.push('/')}
-              className="btn-luxury px-6 py-3 bg-luxury-gold text-black hover:bg-white flex items-center justify-center gap-3"
+              className="btn-luxury px-6 py-3 flex items-center justify-center gap-3"
             >
               <Home className="w-5 h-5" />
               <span>Return Home</span>
             </motion.button>
             
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ y: -2, scale: 1.02 }}
+              whileTap={{ y: 0, scale: 0.98 }}
               onClick={() => router.push('/show')}
-              className="btn-luxury-ghost px-6 py-3 text-luxury-gold border-luxury-gold hover:bg-luxury-gold hover:text-black flex items-center justify-center gap-3"
+              className="btn-luxury-ghost px-6 py-3 flex items-center justify-center gap-3"
             >
               <Sparkles className="w-5 h-5" />
               <span>Enter Show</span>
@@ -146,18 +138,18 @@ export default function NotFound() {
             transition={{ delay: 0.8, duration: 0.6 }}
             className="text-center"
           >
-            <p className="text-sm text-gray-500 mb-4">Or explore these pages:</p>
+            <p className="text-sm text-gray-600 mb-4">Or explore these pages:</p>
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
               <button 
                 onClick={() => router.push('/invite')}
-                className="text-gray-400 hover:text-luxury-gold transition-colors duration-200"
+                className="text-gray-600 hover:text-black transition-colors duration-200"
               >
                 Reserve Your Place
               </button>
-              <span className="text-gray-700">•</span>
+              <span className="text-gray-400">•</span>
               <button 
                 onClick={() => router.push('/admin')}
-                className="text-gray-400 hover:text-luxury-gold transition-colors duration-200"
+                className="text-gray-600 hover:text-black transition-colors duration-200"
               >
                 Admin Access
               </button>
@@ -172,12 +164,12 @@ export default function NotFound() {
           transition={{ delay: 1, duration: 1 }}
           className="absolute bottom-8 left-1/2 -translate-x-1/2"
         >
-          <ChevronDown className="w-6 h-6 text-gray-600 animate-bounce" />
+          <ChevronDown className="w-6 h-6 text-gray-400 animate-bounce" />
         </motion.div>
       </div>
       
       {/* Bottom Decoration */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent z-10" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent z-10" />
       
       {/* Floating Elements */}
       <motion.div
@@ -190,7 +182,7 @@ export default function NotFound() {
           repeat: Infinity,
           ease: "easeInOut"
         }}
-        className="absolute top-1/4 left-1/4 w-2 h-2 bg-luxury-gold rounded-full"
+        className="absolute top-1/4 left-1/4 w-2 h-2 bg-gray-300 rounded-full"
       />
       
       <motion.div
@@ -204,7 +196,7 @@ export default function NotFound() {
           ease: "easeInOut",
           delay: 2
         }}
-        className="absolute top-3/4 right-1/3 w-1 h-1 bg-white rounded-full"
+        className="absolute top-3/4 right-1/3 w-1 h-1 bg-gray-400 rounded-full"
       />
       
       <motion.div
@@ -219,7 +211,7 @@ export default function NotFound() {
           ease: "easeInOut",
           delay: 4
         }}
-        className="absolute top-1/2 right-1/4 w-1.5 h-1.5 bg-luxury-gold/50 rounded-full"
+        className="absolute top-1/2 right-1/4 w-1.5 h-1.5 bg-gray-300 rounded-full"
       />
     </div>
   )

@@ -2,20 +2,24 @@
 
 /* Custom Theme Configuration */
 @theme {
-  --color-luxury-black: #0a0a0a;
+  --color-luxury-black: #1A1A1A;
   --color-luxury-gold: #D4AF37;
   --color-luxury-cream: #FAF7F2;
   --color-luxury-gray: #6B6B6B;
+  --color-luxury-white: #FFFFFF;
+  --color-luxury-light-gray: #FAFAFA;
 }
 
 @layer base {
   /* CSS Variables for Design Tokens */
   :root {
     /* Colors */
-    --color-luxury-black: #0a0a0a;
+    --color-luxury-black: #1A1A1A;
     --color-luxury-gold: #D4AF37;
     --color-luxury-cream: #FAF7F2;
     --color-luxury-gray: #6B6B6B;
+    --color-luxury-white: #FFFFFF;
+    --color-luxury-light-gray: #FAFAFA;
     
     /* Typography */
     --font-display: 'Playfair Display', serif;
@@ -61,7 +65,7 @@
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.5;
     color: var(--color-luxury-black);
-    background-color: white;
+    background-color: var(--color-luxury-white);
   }
   
   /* Focus styles for accessibility */
@@ -72,49 +76,147 @@
 }
 
 @layer components {
-  /* Button Component Styles */
+  /* Button Component Styles - Luxury with Microanimations */
   .btn-luxury {
-    @apply px-8 py-4 bg-black text-white font-light tracking-[0.1em] uppercase;
-    @apply transition-all duration-300;
-    @apply hover:bg-luxury-gold hover:text-black;
+    @apply px-8 py-4 font-light tracking-[0.1em] uppercase;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
-    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-luxury-gold;
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-luxury-black);
+    color: var(--color-luxury-white);
+    border: 1px solid var(--color-luxury-black);
     min-height: 48px; /* Accessibility: touch target */
-    transition-timing-function: var(--ease-luxury);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+  }
+  
+  /* Shimmer effect overlay */
+  .btn-luxury::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      transparent 100%
+    );
+    transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Hover state - keep black with microanimations */
+  .btn-luxury:hover:not(:disabled) {
+    background-color: var(--color-luxury-black);
+    color: var(--color-luxury-white);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 
+      0 10px 20px -5px rgba(0, 0, 0, 0.25),
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  }
+  
+  .btn-luxury:hover:not(:disabled)::before {
+    left: 100%;
+  }
+  
+  /* Active state - pressed feedback */
+  .btn-luxury:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 
+      0 2px 4px -2px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(255, 255, 255, 0.02) inset;
   }
   
   .btn-luxury-ghost {
-    @apply px-8 py-4 bg-transparent text-black border border-black;
-    @apply font-light tracking-[0.1em] uppercase;
-    @apply transition-all duration-300;
-    @apply hover:bg-black hover:text-white;
+    @apply px-8 py-4 bg-transparent font-light tracking-[0.1em] uppercase;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    position: relative;
+    overflow: hidden;
+    color: var(--color-luxury-black);
+    border: 1px solid var(--color-luxury-black);
     min-height: 48px;
-    transition-timing-function: var(--ease-luxury);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
-  /* Input Component Styles */
+  /* Border animation on hover */
+  .btn-luxury-ghost::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background-color: var(--color-luxury-black);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+  
+  .btn-luxury-ghost:hover:not(:disabled) {
+    color: var(--color-luxury-white);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.15);
+  }
+  
+  .btn-luxury-ghost:hover:not(:disabled)::before {
+    width: 300%;
+    height: 300%;
+  }
+  
+  .btn-luxury-ghost span,
+  .btn-luxury-ghost svg {
+    position: relative;
+    z-index: 1;
+  }
+  
+  .btn-luxury-ghost:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Input Component Styles - Clean Luxury */
   .input-luxury {
-    @apply w-full px-6 py-4 bg-transparent border border-gray-300;
-    @apply text-center tracking-widest placeholder:text-gray-400;
-    @apply transition-all duration-300;
-    @apply focus:border-black focus:outline-none;
+    @apply w-full px-6 py-4 bg-transparent;
+    @apply text-center tracking-widest;
+    @apply transition-all duration-200;
+    @apply focus:outline-none;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    border: 1px solid #E5E5E5;
+    color: var(--color-luxury-black);
     min-height: 48px;
     transition-timing-function: var(--ease-luxury);
   }
   
-  /* Card Component */
+  .input-luxury::placeholder {
+    color: #9CA3AF;
+  }
+  
+  .input-luxury:focus {
+    border-color: var(--color-luxury-black);
+  }
+  
+  /* Card Component - Elevated Minimal */
   .card-luxury {
-    @apply bg-white border border-gray-200;
+    @apply bg-white;
     @apply transition-all duration-300;
-    @apply hover:shadow-xl hover:border-gray-300;
+    border: 1px solid #F3F4F6;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
     transition-timing-function: var(--ease-luxury);
   }
   
-  /* Loading Skeleton */
+  .card-luxury:hover {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+  
+  /* Loading Skeleton - Subtle */
   .skeleton {
-    @apply animate-pulse bg-gray-200 rounded;
+    @apply animate-pulse rounded;
+    background: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
+    background-size: 200% 100%;
   }
 }
 
@@ -183,13 +285,13 @@
     animation: scaleIn var(--motion-fast) var(--ease-spring);
   }
 
-  /* Shimmer effect for loading */
+  /* Shimmer effect for loading - Refined */
   .shimmer {
     background: linear-gradient(
       90deg,
-      #f0f0f0 25%,
-      #e0e0e0 50%,
-      #f0f0f0 75%
+      #FAFAFA 25%,
+      #F3F4F6 50%,
+      #FAFAFA 75%
     );
     background-size: 1000px 100%;
     animation: shimmer 2s infinite;

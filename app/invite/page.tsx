@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast, { Toaster } from 'react-hot-toast'
 import Image from 'next/image'
+import Confetti from 'react-confetti'
+import { Loader2, CheckCircle, Sparkles } from 'lucide-react'
 
 export default function InvitePage() {
   const [name, setName] = useState('')
@@ -11,11 +13,25 @@ export default function InvitePage() {
   const [isRegistered, setIsRegistered] = useState(false)
   const [spotsLeft, setSpotsLeft] = useState(50)
   const [isLoading, setIsLoading] = useState(false)
+  const [spotNumber, setSpotNumber] = useState(0)
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
 
   useEffect(() => {
     fetchEventData()
     const interval = setInterval(fetchEventData, 10000)
-    return () => clearInterval(interval)
+    
+    // Set window size for confetti
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight })
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('resize', handleResize)
+    }
   }, [])
 
   async function fetchEventData() {
@@ -32,30 +48,67 @@ export default function InvitePage() {
     e.preventDefault()
     setIsLoading(true)
     
-    const { error } = await supabase
-      .from('guests')
-      .insert([{ name, email }])
-    
-    if (error) {
-      if (error.code === '23505') {
-        toast.error('This email is already registered', {
-          style: {
-            background: '#000',
-            color: '#fff',
-            fontSize: '14px',
-            letterSpacing: '0.05em',
-          },
-        })
-      } else {
-        toast.error('Something went wrong. Please try again.')
+    try {
+      // Call the API endpoint instead of direct Supabase insert
+      const response = await fetch('/api/invite/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email })
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        if (data.error === 'Event full') {
+          toast.error('Event is now full!', {
+            style: {
+              background: '#000',
+              color: '#fff',
+              fontSize: '14px',
+              letterSpacing: '0.05em',
+            },
+            icon: '🚫'
+          })
+        } else {
+          toast.error('This email is already registered', {
+            style: {
+              background: '#000',
+              color: '#fff',
+              fontSize: '14px',
+              letterSpacing: '0.05em',
+            },
+          })
+        }
+        setIsLoading(false)
+        return
       }
+      
+      // Success!
+      setSpotNumber(data.spotNumber)
+      setIsRegistered(true)
+      setShowConfetti(true)
+      
+      // Stop confetti after 5 seconds
+      setTimeout(() => setShowConfetti(false), 5000)
+      
+      // Haptic feedback if available
+      if ('vibrate' in navigator) {
+        navigator.vibrate([100, 50, 100])
+      }
+      
+      fetchEventData()
+    } catch (error) {
+      toast.error('Something went wrong. Please try again.', {
+        style: {
+          background: '#000',
+          color: '#fff',
+          fontSize: '14px',
+          letterSpacing: '0.05em',
+        },
+      })
+    } finally {
       setIsLoading(false)
-      return
     }
-    
-    setIsRegistered(true)
-    setIsLoading(false)
-    fetchEventData()
   }
 
   return (
@@ -97,7 +150,7 @@ export default function InvitePage() {
                 />
                 <div className="flex items-center justify-center gap-4 text-xs tracking-widest uppercase">
                   <span>Chapter I</span>
-                  <span className="text-luxury-gold">•</span>
+                  <span className="text-black">•</span>
                   <span>Winter Luxe</span>
                 </div>
               </motion.div>
@@ -118,7 +171,7 @@ export default function InvitePage() {
                     onChange={(e) => setName(e.target.value)}
                     required
                     disabled={isLoading}
-                    className="luxury-input w-full text-center tracking-widest placeholder:text-gray-400 uppercase"
+                    className="input-luxury w-full text-center tracking-widest placeholder:text-gray-400 uppercase"
                   />
                 </div>
                 
@@ -130,16 +183,25 @@ export default function InvitePage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     disabled={isLoading}
-                    className="luxury-input w-full text-center tracking-widest placeholder:text-gray-400"
+                    className="input-luxury w-full text-center tracking-widest placeholder:text-gray-400"
                   />
                 </div>
                 
                 <button
                   type="submit"
                   disabled={isLoading || spotsLeft === 0}
-                  className="luxury-button w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-luxury w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {isLoading ? 'PROCESSING...' : 'RESERVE YOUR PLACE'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>PROCESSING...</span>
+                    </>
+                  ) : spotsLeft === 0 ? (
+                    'EVENT FULL'
+                  ) : (
+                    'RESERVE YOUR PLACE'
+                  )}
                 </button>
               </motion.form>
 
@@ -161,13 +223,30 @@ export default function InvitePage() {
                     <p className="text-xs tracking-widest uppercase">
                       {spotsLeft > 0 ? (
                         <>
-                          <span className="text-luxury-gold font-medium">{spotsLeft}</span>
+                          {spotsLeft <= 10 && (
+                            <span className="inline-block px-2 py-0.5 bg-black text-white rounded-full text-[10px] mr-2 animate-pulse">
+                              FINAL SPOTS
+                            </span>
+                          )}
+                          <span className="text-black font-medium">{spotsLeft}</span>
                           <span className="text-gray-600"> of 50 places remaining</span>
                         </>
                       ) : (
-                        <span className="text-red-600">FULLY BOOKED</span>
+                        <span className="text-black font-medium">FULLY BOOKED</span>
                       )}
                     </p>
+                  </div>
+                  
+                  {/* Progress bar */}
+                  <div className="mt-4 max-w-xs mx-auto">
+                    <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+                      <motion.div 
+                        className="h-full bg-black"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${((50 - spotsLeft) / 50) * 100}%` }}
+                        transition={{ duration: 0.5 }}
+                      />
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -180,16 +259,33 @@ export default function InvitePage() {
               transition={{ duration: 0.5 }}
               className="w-full max-w-sm sm:max-w-md text-center px-4"
             >
+              {/* Confetti Effect */}
+              {showConfetti && (
+                <Confetti
+                  width={windowSize.width}
+                  height={windowSize.height}
+                  numberOfPieces={200}
+                  recycle={false}
+                  colors={['#000000', '#666666', '#999999', '#CCCCCC']}
+                />
+              )}
+              
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                 className="w-20 h-20 mx-auto mb-8 flex items-center justify-center"
               >
-                <div className="w-full h-full border-2 border-luxury-gold flex items-center justify-center">
-                  <svg className="w-10 h-10 text-luxury-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                <div className="w-full h-full bg-black text-white flex items-center justify-center relative">
+                  <CheckCircle className="w-10 h-10" />
+                  <motion.div
+                    className="absolute -top-2 -right-2"
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ delay: 0.5, type: "spring" }}
+                  >
+                    <Sparkles className="w-6 h-6 text-gray-600" />
+                  </motion.div>
                 </div>
               </motion.div>
 
@@ -199,7 +295,20 @@ export default function InvitePage() {
                 transition={{ delay: 0.3 }}
               >
                 <h2 className="font-playfair text-4xl mb-4">Welcome, {name.split(' ')[0]}</h2>
-                <p className="text-gray-600 tracking-wide mb-8">Your place has been reserved</p>
+                <p className="text-gray-600 tracking-wide mb-4">Your place has been reserved</p>
+                
+                {/* Spot Number Badge */}
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
+                  className="inline-block mb-8"
+                >
+                  <div className="bg-black text-white px-6 py-3 rounded-full">
+                    <p className="text-xs tracking-widest uppercase mb-1">Your Spot</p>
+                    <p className="font-playfair text-2xl">#{spotNumber}</p>
+                  </div>
+                </motion.div>
                 
                 <div className="space-y-4 py-8 border-y border-gray-200">
                   <p className="text-sm tracking-widest uppercase">Chapter I • Winter Luxe</p>
@@ -208,8 +317,18 @@ export default function InvitePage() {
                 </div>
                 
                 <p className="mt-8 text-xs tracking-widest uppercase text-gray-500">
-                  Location details will be sent via email
+                  Confirmation email sent to {email}
                 </p>
+                
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1 }}
+                  onClick={() => window.location.href = '/'}
+                  className="mt-8 btn-luxury-ghost px-6 py-2 text-sm"
+                >
+                  Return Home
+                </motion.button>
               </motion.div>
             </motion.div>
           )}

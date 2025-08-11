@@ -39,7 +39,7 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white text-black flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -54,8 +54,8 @@ export default function AdminLogin() {
             transition={{ delay: 0.2, duration: 0.5 }}
             className="mb-6"
           >
-            <div className="w-16 h-16 bg-luxury-gold/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-8 h-8 text-luxury-gold" />
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8 text-black" />
             </div>
           </motion.div>
           
@@ -67,7 +67,7 @@ export default function AdminLogin() {
             className="mx-auto mb-2"
             priority
           />
-          <p className="text-sm tracking-widest uppercase text-gray-500">
+          <p className="text-sm tracking-widest uppercase text-gray-600">
             Panel de Administración
           </p>
         </div>
@@ -77,11 +77,11 @@ export default function AdminLogin() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="bg-gray-950 border border-gray-900 rounded-lg p-8"
+          className="bg-white border border-gray-200 rounded-lg p-8 shadow-lg"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Contraseña de Administrador
               </label>
               <div className="relative">
@@ -90,7 +90,7 @@ export default function AdminLogin() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white placeholder:text-gray-600 focus:border-luxury-gold focus:outline-none pr-12"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-black placeholder:text-gray-400 focus:border-black focus:outline-none pr-12"
                   placeholder="Ingresa la contraseña..."
                   required
                   disabled={isLoading}
@@ -98,7 +98,7 @@ export default function AdminLogin() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   disabled={isLoading}
                 >
                   {showPassword ? (
@@ -123,11 +123,11 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={isLoading || !password}
-              className="w-full flex items-center justify-center gap-2 bg-luxury-gold text-black py-3 px-4 rounded-lg font-medium hover:bg-luxury-gold/80 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 bg-black text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Verificando...
                 </>
               ) : (
@@ -139,8 +139,8 @@ export default function AdminLogin() {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-gray-800">
-            <p className="text-xs text-gray-500 text-center">
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-xs text-gray-600 text-center">
               Panel exclusivo para administradores de Second Story
             </p>
           </div>
