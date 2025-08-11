@@ -33,13 +33,5 @@
       "source": "/api/socket/:path*",
       "destination": "http://localhost:3001/:path*"
     }
-  ],
-  "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
-    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
-    "UPLOADTHING_TOKEN": "@uploadthing_token",
-    "UPLOADTHING_SECRET": "@uploadthing_secret",
-    "RESEND_API_KEY": "@resend_api_key"
-  }
+  ]
 }
