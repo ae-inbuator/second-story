@@ -311,13 +311,19 @@ export default function AdminPage() {
       return
     }
     
-    emit('announcement', { 
+    console.log('📢 Sending announcement:', announcement) // Debug log
+    
+    const success = emit('announcement', { 
       message: announcement,
       duration: announcementDuration * 1000
     })
     
-    toast.success('Announcement sent!', { icon: '📢' })
-    setAnnouncement('')
+    if (success) {
+      toast.success('Announcement sent!', { icon: '📢' })
+      setAnnouncement('')
+    } else {
+      toast.error('Failed to send - WebSocket not connected')
+    }
   }, [announcement, announcementDuration, emit])
 
   // Control show status

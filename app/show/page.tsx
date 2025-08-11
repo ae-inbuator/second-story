@@ -65,11 +65,17 @@ export default function ShowPage() {
     }
 
     const handleAnnouncement = ({ message }: any) => {
+      console.log('📢 Announcement received:', message) // Debug log
       toast(message, { 
         duration: 10000,
+        icon: '📢',
         style: {
-          background: 'var(--color-luxury-gold)',
-          color: 'black',
+          background: '#1a1a1a',  // Fondo negro
+          color: '#D4AF37',        // Texto dorado
+          border: '2px solid #D4AF37',
+          fontSize: '16px',
+          fontWeight: 'bold',
+          padding: '16px',
         }
       })
     }
