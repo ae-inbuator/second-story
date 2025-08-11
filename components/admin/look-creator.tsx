@@ -41,7 +41,7 @@ interface Look {
   event_id: string
   look_number: number
   name: string
-  hero_image?: string
+  hero_image?: string | null
   active: boolean
 }
 

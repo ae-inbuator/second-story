@@ -28,7 +28,7 @@ export function RegistrationForm({ onSuccess, className }: RegistrationFormProps
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<{name?: string; email?: string}>({})
   const [isSuccess, setIsSuccess] = useState(false)
-  const { saveGuest } = useGuest()
+  const { setGuestId } = useGuest()
 
   const validateForm = () => {
     const newErrors: {name?: string; email?: string} = {}
@@ -74,7 +74,7 @@ export function RegistrationForm({ onSuccess, className }: RegistrationFormProps
         throw new Error(data.error || 'Registration failed')
       }
 
-      saveGuest(data.guest)
+      setGuestId(data.guest.id)
       setIsSuccess(true)
       
       toast.success('Welcome to Second Story!', {

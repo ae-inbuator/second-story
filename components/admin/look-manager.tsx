@@ -78,7 +78,15 @@ export function LookManager() {
 
       if (error) throw error
       
-      setLooks(data || [])
+      const formattedLooks = (data || []).map((look: any) => ({
+        ...look,
+        look_products: look.look_products?.map((lp: any) => ({
+          display_order: lp.display_order,
+          products: lp.products
+        })) || []
+      }))
+      
+      setLooks(formattedLooks)
     } catch (error) {
       console.error('Failed to fetch looks:', error)
       toast.error('Failed to load looks')

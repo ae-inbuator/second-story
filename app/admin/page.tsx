@@ -276,7 +276,7 @@ export default function AdminPage() {
 
     } catch (error) {
       console.error('Error activating look:', error)
-      toast.error(`Failed to activate look: ${error.message}`)
+      toast.error(`Failed to activate look: ${error instanceof Error ? error.message : 'Unknown error'}`)
       
       // Refresh looks to ensure UI is in sync with database
       await fetchLooks()

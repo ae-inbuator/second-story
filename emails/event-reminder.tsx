@@ -49,7 +49,7 @@ export const EventReminderEmail = ({
               <Text style={countdown}>
                 {hoursUntilEvent === 24 ? 'Tomorrow' : `In ${hoursUntilEvent} hours`}
               </Text>
-              <Text style={eventTime}>
+              <Text>
                 {eventDate} · {eventTime}
               </Text>
             </Section>

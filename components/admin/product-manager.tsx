@@ -26,7 +26,7 @@ interface Product {
   size: string
   condition: string
   description: string
-  measurements: any
+  measurements: Record<string, string | number> | null
   images: string[]
   created_at: string
 }
@@ -227,7 +227,10 @@ export function ProductManager({ refreshTrigger }: { refreshTrigger?: number }) 
                       onError={(e) => {
                         console.log('Image failed to load:', product.images[0])
                         e.currentTarget.style.display = 'none'
-                        e.currentTarget.nextElementSibling.style.display = 'flex'
+                        const nextElement = e.currentTarget.nextElementSibling as HTMLElement | null
+                        if (nextElement) {
+                          nextElement.style.display = 'flex'
+                        }
                       }}
                     />
                   ) : null}
@@ -397,14 +400,14 @@ export function ProductManager({ refreshTrigger }: { refreshTrigger?: number }) 
                       <div>
                         <label className="text-xs text-gray-500 uppercase tracking-wider">Measurements</label>
                         <div className="grid grid-cols-2 gap-2 mt-1">
-                          {Object.entries(selectedProduct.measurements).map(([key, value]) => (
-                            value && (
+                          {Object.entries(selectedProduct.measurements).map(([key, value]) => 
+                            value ? (
                               <div key={key} className="text-sm">
                                 <span className="text-gray-400 capitalize">{key}:</span>
                                 <span className="text-white ml-2">{value} cm</span>
                               </div>
-                            )
-                          ))}
+                            ) : null
+                          )}
                         </div>
                       </div>
                     )}
