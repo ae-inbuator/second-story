@@ -15,6 +15,9 @@ export default function ShowPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [guestName, setGuestName] = useState('')
   const [guestId, setGuestId] = useState('')
+  const [checkInMethod, setCheckInMethod] = useState<'phone' | 'code'>('phone')
+  const [phoneDigits, setPhoneDigits] = useState('')
+  const [invitationCode, setInvitationCode] = useState('')
   const [currentLook, setCurrentLook] = useState<any>(null)
   const [products, setProducts] = useState<any[]>([])
   const [wishCounts, setWishCounts] = useState<Record<string, number>>({})
@@ -91,46 +94,101 @@ export default function ShowPage() {
     }
   }, [socket, on, off])
 
-  // Handle login
+  // Handle login with dual methods
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setIsLoading(true)
     
     try {
-      const { data } = await supabase
-        .from('guests')
-        .select('*')
-        .ilike('name', guestName.trim())
-        .single()
+      let guestData = null
+      const inputValue = phoneDigits || invitationCode
       
-      if (data) {
-        setGuestId(data.id)
+      // Check if input is 4 digits (phone check-in)
+      if (/^\d{4}$/.test(inputValue)) {
+        // Search by last 4 digits of phone
+        const { data: guests } = await supabase
+          .from('guests')
+          .select('*')
+          .not('phone_number', 'is', null)
+        
+        if (guests) {
+          // Find guest with matching last 4 digits
+          guestData = guests.find(g => {
+            const phone = g.phone_number?.replace(/\D/g, '')
+            return phone && phone.slice(-4) === inputValue
+          })
+        }
+        
+        if (!guestData) {
+          toast.error('Phone number not found. Please check your digits or use your invitation code.')
+          setIsLoading(false)
+          return
+        }
+      } 
+      // Check if input looks like an invitation code
+      else if (inputValue.length <= 10 && inputValue.startsWith('LUX')) {
+        // Search by invitation code
+        const { data } = await supabase
+          .from('guests')
+          .select('*')
+          .eq('invitation_code', inputValue.toUpperCase())
+          .single()
+        
+        guestData = data
+        
+        if (!guestData) {
+          toast.error('Invalid invitation code. Please try again.')
+          setIsLoading(false)
+          return
+        }
+      } 
+      // Fallback to name search (backward compatibility)
+      else if (inputValue.length > 0) {
+        const { data } = await supabase
+          .from('guests')
+          .select('*')
+          .ilike('name', `%${inputValue.trim()}%`)
+          .single()
+        
+        guestData = data
+        
+        if (!guestData) {
+          toast.error('Guest not found. Please use your phone digits or invitation code.')
+          setIsLoading(false)
+          return
+        }
+      }
+      
+      if (guestData) {
+        setGuestId(guestData.id)
         setIsLoggedIn(true)
         
         // Save to localStorage
         localStorage.setItem(config.storage.guestId, JSON.stringify({
-          id: data.id,
-          name: data.name,
-          email: data.email
+          id: guestData.id,
+          name: guestData.name,
+          email: guestData.email
         }))
         
         // Update check-in
         await supabase
           .from('guests')
           .update({ checked_in_at: new Date().toISOString() })
-          .eq('id', data.id)
+          .eq('id', guestData.id)
         
         // Join socket room
-        emit('guest:join', { guestId: data.id })
+        emit('guest:join', { guestId: guestData.id })
         
         await fetchCurrentLook()
         
-        toast.success(`Welcome back, ${data.name.split(' ')[0]}!`, {
-          icon: '👋',
-          duration: 3000
+        toast.success(`Welcome, ${guestData.name.split(' ')[0]}!`, {
+          icon: '✨',
+          duration: 3000,
+          style: {
+            background: '#000',
+            color: '#fff',
+          }
         })
-      } else {
-        toast.error('Name not found. Please check your registration.')
       }
     } catch (error) {
       console.error('Login error:', error)
@@ -234,10 +292,10 @@ export default function ShowPage() {
     )
   }
 
-  // Login screen
+  // Login screen with dual check-in
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-white text-black flex items-center justify-center px-4 sm:px-6">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 sm:px-6">
         <Toaster position="top-center" />
         
         <motion.div
@@ -248,43 +306,80 @@ export default function ShowPage() {
         >
           <div className="text-center mb-12 sm:mb-16">
             <Image 
-              src="/logo.png" 
+              src="/logo-white.png" 
               alt="Second Story" 
               width={280} 
               height={84} 
-              className="mx-auto mb-4"
+              className="mx-auto mb-4 brightness-0 invert"
               priority
             />
-            <p className="text-xs tracking-widest uppercase text-gray-600">
+            <p className="text-xs tracking-[0.2em] uppercase text-gray-400">
               Chapter I • Live Experience
             </p>
           </div>
           
-          <form onSubmit={handleLogin} className="space-y-6">
-            <input
-              type="text"
-              placeholder="ENTER YOUR NAME"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              required
-              disabled={isLoading}
-              className="input-luxury bg-transparent border-gray-300 text-black placeholder:text-gray-400 focus:border-black"
-              autoComplete="name"
-              autoFocus
-            />
+          <div className="space-y-8">
+            <div className="text-center">
+              <h2 className="font-playfair text-2xl mb-2">Welcome Back</h2>
+              <p className="text-xs tracking-wider uppercase text-gray-500">
+                Enter with your invitation
+              </p>
+            </div>
             
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn-luxury w-full"
-            >
-              {isLoading ? 'ENTERING...' : 'ENTER SHOW'}
-            </button>
-          </form>
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="LAST 4 DIGITS OF YOUR PHONE"
+                  value={phoneDigits}
+                  onChange={(e) => {
+                    setPhoneDigits(e.target.value.replace(/\D/g, '').slice(0, 4))
+                    setInvitationCode('') // Clear other field
+                  }}
+                  maxLength={4}
+                  pattern="[0-9]{4}"
+                  disabled={isLoading}
+                  className="w-full bg-transparent border border-gray-700 px-4 py-3 text-center tracking-[0.3em] text-lg placeholder:text-gray-600 focus:border-white transition-colors outline-none"
+                  autoComplete="off"
+                  autoFocus
+                />
+                
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-800"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-black px-4 text-gray-500">or</span>
+                  </div>
+                </div>
+                
+                <input
+                  type="text"
+                  placeholder="YOUR INVITATION CODE"
+                  value={invitationCode}
+                  onChange={(e) => {
+                    setInvitationCode(e.target.value.toUpperCase())
+                    setPhoneDigits('') // Clear other field
+                  }}
+                  disabled={isLoading}
+                  className="w-full bg-transparent border border-gray-700 px-4 py-3 text-center tracking-[0.2em] placeholder:text-gray-600 focus:border-white transition-colors outline-none"
+                  autoComplete="off"
+                />
+              </div>
+              
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-white text-black py-3 px-8 tracking-[0.2em] uppercase text-sm font-light hover:bg-gray-100 transition-all disabled:opacity-50"
+              >
+                {isLoading ? 'ENTERING...' : 'ENTER SHOW'}
+              </button>
+            </form>
+          </div>
           
           {/* Connection status */}
           <div className="mt-8 text-center">
-            <div className="flex items-center justify-center gap-2 text-xs text-gray-600">
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
               {isReconnecting ? (
                 <>
                   <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />

@@ -25,7 +25,8 @@ import {
   Bell,
   Package,
   Grid3X3,
-  Plus
+  Plus,
+  Mail
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { useWebSocket } from '@/hooks/useWebSocket'
@@ -718,6 +719,55 @@ export default function AdminPage() {
                     )}
                   </motion.div>
                 ))}
+              </div>
+
+              {/* Quick Actions */}
+              <div className="bg-gray-950 border border-gray-900 rounded-lg p-6">
+                <h3 className="text-lg font-medium tracking-wide mb-4">Quick Actions</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <button
+                    onClick={() => router.push('/admin/invitations')}
+                    className="flex flex-col items-center justify-center p-4 bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors group"
+                  >
+                    <Mail className="w-6 h-6 text-luxury-gold mb-2 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm">Invitations</span>
+                  </button>
+                  <button
+                    onClick={() => router.push('/admin/guests')}
+                    className="flex flex-col items-center justify-center p-4 bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors group"
+                  >
+                    <Users className="w-6 h-6 text-luxury-gold mb-2 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm">Guests</span>
+                  </button>
+                  <button
+                    onClick={() => router.push('/admin/wishes')}
+                    className="flex flex-col items-center justify-center p-4 bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors group"
+                  >
+                    <Heart className="w-6 h-6 text-luxury-gold mb-2 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm">Wishlists</span>
+                  </button>
+                  <button
+                    onClick={() => router.push('/admin/checkins')}
+                    className="flex flex-col items-center justify-center p-4 bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors group"
+                  >
+                    <Activity className="w-6 h-6 text-luxury-gold mb-2 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm">Check-ins</span>
+                  </button>
+                  <button
+                    onClick={() => router.push('/admin/active')}
+                    className="flex flex-col items-center justify-center p-4 bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors group"
+                  >
+                    <Eye className="w-6 h-6 text-luxury-gold mb-2 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm">Active Now</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('export')}
+                    className="flex flex-col items-center justify-center p-4 bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors group"
+                  >
+                    <Download className="w-6 h-6 text-luxury-gold mb-2 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm">Export</span>
+                  </button>
+                </div>
               </div>
 
               {/* Real-time Activity Feed */}

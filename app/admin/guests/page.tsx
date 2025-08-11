@@ -13,21 +13,31 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
-  Trash2
+  Trash2,
+  Upload,
+  UserPlus,
+  Send,
+  Copy,
+  QrCode,
+  CheckCircle
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { generateInvitationCode, generateWhatsAppLink, WhatsAppTemplates } from '@/lib/invitation-utils'
 
 interface Guest {
   id: string
   name: string
   email: string
-  phone?: string
+  phone_number?: string
+  invitation_code?: string
+  vip_level?: string
   created_at: string
+  confirmed_at?: string
   checked_in_at?: string
-  invite_sent_at?: string
-  invite_accepted_at?: string
+  invitation_sent_at?: string
+  registered_at?: string
 }
 
 export default function GuestsPage() {
@@ -35,7 +45,10 @@ export default function GuestsPage() {
   const [filteredGuests, setFilteredGuests] = useState<Guest[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<'all' | 'invited' | 'accepted' | 'checked_in'>('all')
+  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'checked_in'>('all')
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [newGuest, setNewGuest] = useState({ name: '', phone_number: '', email: '', vip_level: 'standard' })
   const [currentPage, setCurrentPage] = useState(1)
   const [sortBy, setSortBy] = useState<'name' | 'email' | 'created_at'>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
