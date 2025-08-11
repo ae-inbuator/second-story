@@ -205,7 +205,7 @@ export default function AdminPage() {
 
       // Check if it's already active
       if (targetLook.active) {
-        toast.info('This look is already active')
+        toast('This look is already active')
         return true
       }
 

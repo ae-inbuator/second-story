@@ -138,7 +138,7 @@ export default function ActiveGuestsPage() {
           last_active: lastActive.toISOString(),
           wishes_count: wishCount,
           session_duration: sessionDuration,
-          connection_status,
+          connection_status: connectionStatus,
           current_look: `Look ${Math.floor(Math.random() * 20) + 1}` // Simulated
         }
       })

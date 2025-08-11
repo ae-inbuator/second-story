@@ -15,7 +15,7 @@ import {
   Grid,
   List,
   Image as ImageIcon,
-  DragHandleDots2Icon
+  GripVertical
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { LuxuryImage } from '@/components/ui/luxury-image'

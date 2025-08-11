@@ -30,6 +30,7 @@ interface Guest {
   id: string
   name: string
   email: string
+  phone?: string
   phone_number?: string
   invitation_code?: string
   vip_level?: string
@@ -37,6 +38,8 @@ interface Guest {
   confirmed_at?: string
   checked_in_at?: string
   invitation_sent_at?: string
+  invite_sent_at?: string
+  invite_accepted_at?: string
   registered_at?: string
 }
 
@@ -45,7 +48,7 @@ export default function GuestsPage() {
   const [filteredGuests, setFilteredGuests] = useState<Guest[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'checked_in'>('all')
+  const [filter, setFilter] = useState<'all' | 'invited' | 'accepted' | 'checked_in'>('all')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [newGuest, setNewGuest] = useState({ name: '', phone_number: '', email: '', vip_level: 'standard' })

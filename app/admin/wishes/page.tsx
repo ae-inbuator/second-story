@@ -105,19 +105,19 @@ export default function WishesPage() {
         product_id: item.product_id,
         created_at: item.created_at,
         guest: {
-          name: item.guests?.name || 'Unknown',
-          email: item.guests?.email || 'Unknown'
+          name: (item.guests as any)?.name || 'Unknown',
+          email: (item.guests as any)?.email || 'Unknown'
         },
         product: {
-          name: item.products?.name || 'Unknown Product',
-          price: item.products?.price || 0,
-          brand: item.products?.brand || 'Unknown Brand',
-          hero_image: item.products?.hero_image,
-          look_id: item.products?.look_id
+          name: (item.products as any)?.name || 'Unknown Product',
+          price: (item.products as any)?.price || 0,
+          brand: (item.products as any)?.brand || 'Unknown Brand',
+          hero_image: (item.products as any)?.hero_image,
+          look_id: (item.products as any)?.look_id
         },
-        look: item.products?.looks ? {
-          look_number: item.products.looks.look_number,
-          name: item.products.looks.name
+        look: (item.products as any)?.looks ? {
+          look_number: (item.products as any).looks.look_number,
+          name: (item.products as any).looks.name
         } : undefined
       }))
 
