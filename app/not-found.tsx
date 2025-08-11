@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { 
   ArrowLeft, 
   Home, 
@@ -53,6 +54,23 @@ export default function NotFound() {
           transition={{ duration: 0.8 }}
           className="max-w-2xl mx-auto"
         >
+          {/* Logo */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.6 }}
+            className="mb-8"
+          >
+            <Image 
+              src="/logo.png" 
+              alt="Second Story" 
+              width={240} 
+              height={72} 
+              className="mx-auto opacity-80"
+              priority
+            />
+          </motion.div>
+          
           {/* 404 Display */}
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}

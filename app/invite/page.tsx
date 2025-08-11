@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast, { Toaster } from 'react-hot-toast'
+import Image from 'next/image'
 
 export default function InvitePage() {
   const [name, setName] = useState('')
@@ -86,7 +87,14 @@ export default function InvitePage() {
                 transition={{ delay: 0.1, duration: 0.6 }}
                 className="text-center mb-16"
               >
-                <h1 className="font-playfair text-6xl mb-4">SECOND STORY</h1>
+                <Image 
+                  src="/logo.png" 
+                  alt="Second Story" 
+                  width={320} 
+                  height={96} 
+                  className="mx-auto mb-4"
+                  priority
+                />
                 <div className="flex items-center justify-center gap-4 text-xs tracking-widest uppercase">
                   <span>Chapter I</span>
                   <span className="text-luxury-gold">•</span>

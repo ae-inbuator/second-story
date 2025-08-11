@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { 
   RefreshCw, 
   Home, 
@@ -76,6 +77,23 @@ export default function ErrorPage({ error, reset }: ErrorProps) {
           transition={{ duration: 0.8 }}
           className="max-w-2xl mx-auto"
         >
+          {/* Logo */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.6 }}
+            className="mb-6"
+          >
+            <Image 
+              src="/logo.png" 
+              alt="Second Story" 
+              width={200} 
+              height={60} 
+              className="mx-auto opacity-70"
+              priority
+            />
+          </motion.div>
+          
           {/* Error Icon */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}

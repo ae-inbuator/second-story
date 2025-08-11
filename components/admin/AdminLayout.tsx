@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { 
   ArrowLeft, 
   Home,
@@ -162,8 +163,19 @@ export function AdminLayout({
       <header className="bg-black border-b border-gray-900 sticky top-0 z-50">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            {/* Left side - Navigation */}
+            {/* Left side - Logo and Navigation */}
             <div className="flex items-center gap-4">
+              {/* Logo */}
+              <Link href="/admin">
+                <Image 
+                  src="/logo.png" 
+                  alt="Second Story" 
+                  width={120} 
+                  height={36} 
+                  className="opacity-90 hover:opacity-100 transition-opacity"
+                />
+              </Link>
+              <div className="w-px h-6 bg-gray-800" />
               {/* Back button or breadcrumbs */}
               {showBackButton ? (
                 <button

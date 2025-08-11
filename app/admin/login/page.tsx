@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { auth } from '@/lib/auth'
+import Image from 'next/image'
 
 export default function AdminLogin() {
   const router = useRouter()
@@ -58,7 +59,14 @@ export default function AdminLogin() {
             </div>
           </motion.div>
           
-          <h1 className="font-playfair text-3xl mb-2">SECOND STORY</h1>
+          <Image 
+            src="/logo.png" 
+            alt="Second Story" 
+            width={200} 
+            height={60} 
+            className="mx-auto mb-2"
+            priority
+          />
           <p className="text-sm tracking-widest uppercase text-gray-500">
             Panel de Administración
           </p>

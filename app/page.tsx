@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 import { 
   ArrowRight, 
   Calendar, 
@@ -124,7 +125,13 @@ export default function HomePage() {
           className="text-center"
         >
           <div className="w-16 h-16 border-2 border-luxury-gold border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <h1 className="font-playfair text-2xl text-white">SECOND STORY</h1>
+          <Image 
+            src="/logo.png" 
+            alt="Second Story" 
+            width={150} 
+            height={45} 
+            className="opacity-80"
+          />
         </motion.div>
       </div>
     )
@@ -159,9 +166,16 @@ export default function HomePage() {
             <p className="text-luxury-gold text-sm tracking-[0.3em] uppercase mb-6">
               Chapter I
             </p>
-            <h1 className="font-playfair text-5xl sm:text-7xl lg:text-8xl mb-6">
-              SECOND STORY
-            </h1>
+            <div className="mb-6">
+              <Image 
+                src="/logo.png" 
+                alt="Second Story" 
+                width={400} 
+                height={120} 
+                className="mx-auto"
+                priority
+              />
+            </div>
             <p className="text-xl sm:text-2xl font-light italic mb-8 text-gray-300">
               Where luxury finds its next chapter
             </p>
@@ -417,7 +431,13 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div>
-              <h3 className="font-playfair text-2xl mb-2">SECOND STORY</h3>
+              <Image 
+              src="/logo.png" 
+              alt="Second Story" 
+              width={180} 
+              height={54} 
+              className="mb-2"
+            />
               <p className="text-sm text-gray-500">© 2024 All rights reserved</p>
             </div>
             

@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Heart, Users, ChevronLeft, ChevronRight, Sparkles, ShoppingBag, Clock } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
+import Image from 'next/image'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { useOptimisticWishlist } from '@/hooks/useOptimisticWishlist'
 import { LookSkeleton } from '@/components/ui/skeleton'
@@ -228,7 +229,14 @@ export default function ShowPage() {
           className="w-full max-w-sm sm:max-w-md"
         >
           <div className="text-center mb-12 sm:mb-16">
-            <h1 className="font-playfair text-4xl sm:text-5xl mb-4">SECOND STORY</h1>
+            <Image 
+              src="/logo.png" 
+              alt="Second Story" 
+              width={280} 
+              height={84} 
+              className="mx-auto mb-4"
+              priority
+            />
             <p className="text-xs tracking-widest uppercase text-gray-400">
               Chapter I • Live Experience
             </p>
@@ -290,7 +298,12 @@ export default function ShowPage() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-xl border-b border-gray-900 safe-top">
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between">
-          <h1 className="font-playfair text-xl sm:text-2xl">SECOND STORY</h1>
+          <Image 
+            src="/logo.png" 
+            alt="Second Story" 
+            width={140} 
+            height={42} 
+          />
           <div className="flex items-center gap-4">
             {/* Wishlist count */}
             <button
