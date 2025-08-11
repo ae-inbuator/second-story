@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+/* Custom Theme Configuration */
+@theme {
+  --color-luxury-black: #0a0a0a;
+  --color-luxury-gold: #D4AF37;
+  --color-luxury-cream: #FAF7F2;
+  --color-luxury-gray: #6B6B6B;
+}
+
+@layer base {
+  /* CSS Variables for Design Tokens */
+  :root {
+    /* Colors */
+    --color-luxury-black: #0a0a0a;
+    --color-luxury-gold: #D4AF37;
+    --color-luxury-cream: #FAF7F2;
+    --color-luxury-gray: #6B6B6B;
+    
+    /* Typography */
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    
+    /* Spacing Scale */
+    --space-xs: 0.5rem;
+    --space-sm: 1rem;
+    --space-md: 1.5rem;
+    --space-lg: 2rem;
+    --space-xl: 3rem;
+    --space-2xl: 4rem;
+    --space-3xl: 6rem;
+    
+    /* Animation Timing */
+    --motion-instant: 150ms;
+    --motion-fast: 300ms;
+    --motion-normal: 500ms;
+    --motion-slow: 700ms;
+    
+    /* Easing Functions */
+    --ease-luxury: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-spring: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+}
+
+@layer base {
+  /* Reset and Base Styles */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+    color: var(--color-luxury-black);
+    background-color: white;
+  }
+  
+  /* Focus styles for accessibility */
+  :focus-visible {
+    outline: 2px solid var(--color-luxury-gold);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Button Component Styles */
+  .btn-luxury {
+    @apply px-8 py-4 bg-black text-white font-light tracking-[0.1em] uppercase;
+    @apply transition-all duration-300;
+    @apply hover:bg-luxury-gold hover:text-black;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-luxury-gold;
+    min-height: 48px; /* Accessibility: touch target */
+    transition-timing-function: var(--ease-luxury);
+  }
+  
+  .btn-luxury-ghost {
+    @apply px-8 py-4 bg-transparent text-black border border-black;
+    @apply font-light tracking-[0.1em] uppercase;
+    @apply transition-all duration-300;
+    @apply hover:bg-black hover:text-white;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: 48px;
+    transition-timing-function: var(--ease-luxury);
+  }
+  
+  /* Input Component Styles */
+  .input-luxury {
+    @apply w-full px-6 py-4 bg-transparent border border-gray-300;
+    @apply text-center tracking-widest placeholder:text-gray-400;
+    @apply transition-all duration-300;
+    @apply focus:border-black focus:outline-none;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    min-height: 48px;
+    transition-timing-function: var(--ease-luxury);
+  }
+  
+  /* Card Component */
+  .card-luxury {
+    @apply bg-white border border-gray-200;
+    @apply transition-all duration-300;
+    @apply hover:shadow-xl hover:border-gray-300;
+    transition-timing-function: var(--ease-luxury);
+  }
+  
+  /* Loading Skeleton */
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
+}
+
+@layer utilities {
+  /* Custom Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn var(--motion-normal) var(--ease-luxury);
+  }
+
+  .animate-slideUp {
+    animation: slideUp var(--motion-normal) var(--ease-luxury);
+  }
+
+  .animate-slideDown {
+    animation: slideDown var(--motion-normal) var(--ease-luxury);
+  }
+
+  .animate-scaleIn {
+    animation: scaleIn var(--motion-fast) var(--ease-spring);
+  }
+
+  /* Shimmer effect for loading */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      #f0f0f0 25%,
+      #e0e0e0 50%,
+      #f0f0f0 75%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+  }
+  
+  /* Responsive Typography Scale */
+  .text-responsive {
+    font-size: clamp(1rem, 2vw, 1.125rem);
+  }
+  
+  /* Safe area padding for mobile */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

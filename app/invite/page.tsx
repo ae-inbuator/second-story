@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Calendar, Users, Sparkles } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import toast, { Toaster } from 'react-hot-toast'
 
 export default function InvitePage() {
@@ -9,16 +9,15 @@ export default function InvitePage() {
   const [email, setEmail] = useState('')
   const [isRegistered, setIsRegistered] = useState(false)
   const [spotsLeft, setSpotsLeft] = useState(50)
-  const [recentGuests, setRecentGuests] = useState<any[]>([])
-  const [eventDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    fetchRegistrationStats()
-    const interval = setInterval(fetchRegistrationStats, 5000)
+    fetchEventData()
+    const interval = setInterval(fetchEventData, 10000)
     return () => clearInterval(interval)
   }, [])
 
-  const fetchRegistrationStats = async () => {
+  async function fetchEventData() {
     const { count } = await supabase
       .from('guests')
       .select('*', { count: 'exact', head: true })
@@ -26,149 +25,200 @@ export default function InvitePage() {
     if (count !== null) {
       setSpotsLeft(50 - count)
     }
-
-    const { data: recent } = await supabase
-      .from('guests')
-      .select('name, created_at')
-      .order('created_at', { ascending: false })
-      .limit(3)
-    
-    if (recent) {
-      setRecentGuests(recent)
-    }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
+    setIsLoading(true)
     
     const { error } = await supabase
       .from('guests')
-      .insert({ name, email })
+      .insert([{ name, email }])
     
     if (error) {
       if (error.code === '23505') {
-        toast.error('You're already registered!')
+        toast.error('This email is already registered', {
+          style: {
+            background: '#000',
+            color: '#fff',
+            fontSize: '14px',
+            letterSpacing: '0.05em',
+          },
+        })
       } else {
         toast.error('Something went wrong. Please try again.')
       }
+      setIsLoading(false)
       return
     }
     
     setIsRegistered(true)
-    toast.success('Perfect! Your spot is confirmed.')
-    fetchRegistrationStats()
-  }
-
-  const formatTimeAgo = (date: string) => {
-    const mins = Math.floor((Date.now() - new Date(date).getTime()) / 60000)
-    if (mins < 1) return 'just now'
-    if (mins === 1) return '1 min ago'
-    if (mins < 60) return " mins ago"
-    return 'recently'
+    setIsLoading(false)
+    fetchEventData()
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white overflow-hidden">
       <Toaster position="top-center" />
       
-      <div className="max-w-md w-full space-y-8">
-        {/* Logo */}
-        <div className="text-center space-y-2">
-          <h1 className="text-5xl font-light tracking-wider">SECOND STORY</h1>
-          <p className="text-gray-400 tracking-widest text-sm">CHAPTER I</p>
-        </div>
-
-        {!isRegistered ? (
-          <>
-            {/* Event Info */}
-            <div className="text-center space-y-4 py-8">
-              <div className="flex items-center justify-center gap-2 text-gray-300">
-                <Calendar className="w-4 h-4" />
-                <p>{eventDate.toLocaleDateString('en-US', { 
-                  month: 'long', 
-                  day: 'numeric', 
-                  year: 'numeric' 
-                })} · 7PM</p>
-              </div>
-              
-              <div className="flex items-center justify-center gap-2">
-                <Users className="w-4 h-4 text-yellow-500" />
-                <p className="text-sm">
-                  <span className="text-yellow-500 font-semibold">{spotsLeft}</span> of 50 spots remaining
-                </p>
-              </div>
-            </div>
-
-            {/* Registration Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 transition"
-              />
-              
-              <input
-                type="email"
-                placeholder="Your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/30 transition"
-              />
-              
-              <button
-                type="submit"
-                className="w-full py-3 bg-white text-black font-medium rounded-lg hover:bg-gray-100 transition"
-              >
-                Reserve My Spot
-              </button>
-            </form>
-
-            {/* Recent Registrations */}
-            {recentGuests.length > 0 && (
-              <div className="pt-8 border-t border-white/10">
-                <p className="text-xs text-gray-400 mb-3">Recently joined</p>
-                <div className="space-y-2">
-                  {recentGuests.map((guest, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm text-gray-300">
-                      <Sparkles className="w-3 h-3 text-yellow-500" />
-                      <span>{guest.name.split(' ')[0]} {guest.name.split(' ')[1]?.[0]}.</span>
-                      <span className="text-gray-500">· {formatTimeAgo(guest.created_at)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          /* Confirmation State */
-          <div className="text-center space-y-6 py-12">
-            <div className="text-6xl">✓</div>
-            <div>
-              <h2 className="text-2xl mb-2">Perfect, {name.split(' ')[0]}!</h2>
-              <p className="text-gray-400">Your spot is confirmed</p>
-            </div>
-            
-            <div className="py-6 space-y-2">
-              <p className="text-lg">
-                {eventDate.toLocaleDateString('en-US', { 
-                  month: 'long', 
-                  day: 'numeric', 
-                  year: 'numeric' 
-                })} · 7PM
-              </p>
-              <p className="text-sm text-gray-400">Location will be revealed via WhatsApp</p>
-            </div>
-            
-            <button className="px-6 py-2 border border-white/20 rounded-lg hover:bg-white/5 transition">
-              Add to Calendar
-            </button>
-          </div>
-        )}
+      {/* Background Pattern */}
+      <div className="fixed inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 1px, transparent 15px)`,
+        }} />
       </div>
+
+      <div className="relative min-h-screen flex items-center justify-center px-6 py-20">
+        <AnimatePresence mode="wait">
+          {!isRegistered ? (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="w-full max-w-sm sm:max-w-md"
+            >
+              {/* Header */}
+              <motion.div 
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1, duration: 0.6 }}
+                className="text-center mb-16"
+              >
+                <h1 className="font-playfair text-6xl mb-4">SECOND STORY</h1>
+                <div className="flex items-center justify-center gap-4 text-xs tracking-widest uppercase">
+                  <span>Chapter I</span>
+                  <span className="text-luxury-gold">•</span>
+                  <span>Winter Luxe</span>
+                </div>
+              </motion.div>
+
+              {/* Form */}
+              <motion.form
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.6 }}
+                onSubmit={handleRegister}
+                className="space-y-6"
+              >
+                <div>
+                  <input
+                    type="text"
+                    placeholder="YOUR NAME"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="luxury-input w-full text-center tracking-widest placeholder:text-gray-400 uppercase"
+                  />
+                </div>
+                
+                <div>
+                  <input
+                    type="email"
+                    placeholder="YOUR EMAIL"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="luxury-input w-full text-center tracking-widest placeholder:text-gray-400"
+                  />
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={isLoading || spotsLeft === 0}
+                  className="luxury-button w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? 'PROCESSING...' : 'RESERVE YOUR PLACE'}
+                </button>
+              </motion.form>
+
+              {/* Event Details */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.6 }}
+                className="mt-16 text-center space-y-6"
+              >
+                <div className="text-xs tracking-widest uppercase text-gray-600">
+                  <p>December 12, 2024</p>
+                  <p>7:00 PM</p>
+                </div>
+                
+                <div className="relative">
+                  <div className="absolute inset-x-0 top-1/2 h-px bg-gray-200" />
+                  <div className="relative bg-white px-4 mx-auto w-fit">
+                    <p className="text-xs tracking-widest uppercase">
+                      {spotsLeft > 0 ? (
+                        <>
+                          <span className="text-luxury-gold font-medium">{spotsLeft}</span>
+                          <span className="text-gray-600"> of 50 places remaining</span>
+                        </>
+                      ) : (
+                        <span className="text-red-600">FULLY BOOKED</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="confirmation"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="w-full max-w-sm sm:max-w-md text-center px-4"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="w-20 h-20 mx-auto mb-8 flex items-center justify-center"
+              >
+                <div className="w-full h-full border-2 border-luxury-gold flex items-center justify-center">
+                  <svg className="w-10 h-10 text-luxury-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <h2 className="font-playfair text-4xl mb-4">Welcome, {name.split(' ')[0]}</h2>
+                <p className="text-gray-600 tracking-wide mb-8">Your place has been reserved</p>
+                
+                <div className="space-y-4 py-8 border-y border-gray-200">
+                  <p className="text-sm tracking-widest uppercase">Chapter I • Winter Luxe</p>
+                  <p className="font-playfair text-2xl">December 12, 2024</p>
+                  <p className="text-sm tracking-widest uppercase text-gray-600">7:00 PM</p>
+                </div>
+                
+                <p className="mt-8 text-xs tracking-widest uppercase text-gray-500">
+                  Location details will be sent via email
+                </p>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Footer */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.8 }}
+        className="fixed bottom-8 left-0 right-0 text-center"
+      >
+        <p className="text-xs tracking-widest uppercase text-gray-400">
+          An Exclusive Luxury Archive Experience
+        </p>
+      </motion.div>
     </div>
   )
 }
