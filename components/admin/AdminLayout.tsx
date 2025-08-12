@@ -16,7 +16,8 @@ import {
   Eye,
   Activity,
   Heart,
-  ChevronRight
+  ChevronRight,
+  Calendar
 } from 'lucide-react'
 import { auth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -119,6 +120,7 @@ export function AdminLayout({
     if (parts.length > 1) {
       const section = parts[1]
       const sectionMap: Record<string, { label: string; icon: any }> = {
+        'events': { label: 'Events', icon: Calendar },
         'guests': { label: 'Guests', icon: Users },
         'checkins': { label: 'Check-ins', icon: Eye },
         'active': { label: 'Active', icon: Activity },

@@ -78,6 +78,8 @@ export default function PersonalInvitationPage() {
   }, [event])
 
   async function fetchInvitationData() {
+    if (!code) return
+    
     setIsLoading(true)
     
     try {
@@ -88,23 +90,38 @@ export default function PersonalInvitationPage() {
         .eq('invitation_code', code.toUpperCase())
         .single()
       
-      if (guestError || !guestData) {
+      if (guestError) {
+        console.error('Guest fetch error:', guestError)
+        if (guestError.code === 'PGRST116') {
+          // No matching record found
+          toast.error('Invalid invitation code')
+          setTimeout(() => router.push('/'), 3000)
+        } else {
+          // Other database error
+          toast.error('Error loading invitation. Please try again.')
+        }
+        setIsLoading(false)
+        return
+      }
+      
+      if (!guestData) {
         toast.error('Invalid invitation code')
-        setTimeout(() => router.push('/'), 2000)
+        setTimeout(() => router.push('/'), 3000)
+        setIsLoading(false)
         return
       }
       
       setGuest(guestData)
       setHasConfirmed(!!guestData.confirmed_at)
       
-      // Get upcoming event
-      const { data: eventData } = await supabase
+      // Get upcoming event - don't fail if no event
+      const { data: eventData, error: eventError } = await supabase
         .from('events')
         .select('*')
         .eq('status', 'upcoming')
         .single()
       
-      if (eventData) {
+      if (!eventError && eventData) {
         setEvent(eventData)
         
         // Get current capacity
@@ -116,10 +133,12 @@ export default function PersonalInvitationPage() {
         if (count !== null) {
           setSpotsLeft(eventData.max_capacity - count)
         }
+      } else if (eventError && eventError.code !== 'PGRST116') {
+        console.error('Event fetch error:', eventError)
       }
     } catch (error) {
-      console.error('Error:', error)
-      toast.error('Something went wrong')
+      console.error('Unexpected error:', error)
+      toast.error('Something went wrong. Please refresh and try again.')
     } finally {
       setIsLoading(false)
     }
@@ -168,13 +187,27 @@ export default function PersonalInvitationPage() {
     )
   }
 
-  if (!guest || !event) {
+  if (!guest) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <X className="w-16 h-16 mx-auto text-gray-400 mb-4" />
           <h1 className="text-2xl font-light mb-2">Invalid Invitation</h1>
           <p className="text-gray-500">Please check your invitation link</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center px-6">
+          <Sparkles className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+          <h1 className="text-2xl font-light mb-2">Dear {guest.name}</h1>
+          <p className="text-gray-500 mb-4">Thank you for your interest!</p>
+          <p className="text-gray-600">Event details will be announced soon.</p>
+          <p className="text-sm text-gray-400 mt-6">Your invitation code: {code.toUpperCase()}</p>
         </div>
       </div>
     )
@@ -198,7 +231,7 @@ export default function PersonalInvitationPage() {
       <div className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm z-40 border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <Image
-            src="/logo.svg"
+            src="/logo.png"
             alt="Second Story"
             width={150}
             height={40}

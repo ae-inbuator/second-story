@@ -26,7 +26,8 @@ import {
   Package,
   Grid3X3,
   Plus,
-  Mail
+  Mail,
+  Calendar
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { useWebSocket } from '@/hooks/useWebSocket'
@@ -725,6 +726,13 @@ export default function AdminPage() {
               <div className="bg-gray-950 border border-gray-900 rounded-lg p-6">
                 <h3 className="text-lg font-medium tracking-wide mb-4">Quick Actions</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <button
+                    onClick={() => router.push('/admin/events')}
+                    className="flex flex-col items-center justify-center p-4 bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors group"
+                  >
+                    <Calendar className="w-6 h-6 text-luxury-gold mb-2 group-hover:scale-110 transition-transform" />
+                    <span className="text-sm">Events</span>
+                  </button>
                   <button
                     onClick={() => router.push('/admin/invitations')}
                     className="flex flex-col items-center justify-center p-4 bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors group"
