@@ -71,7 +71,7 @@ export default function AdminPage() {
     avgWishesPerGuest: 0
   })
   const [isLoading, setIsLoading] = useState(true)
-  const [showStatus, setShowStatus] = useState<'preparing' | 'live' | 'paused' | 'ended'>('preparing')
+  const [showStatus, setShowStatus] = useState<'preparing' | 'doors_open' | 'live' | 'paused' | 'ended'>('preparing')
   const [announcement, setAnnouncement] = useState('')
   const [announcementDuration, setAnnouncementDuration] = useState(10)
   const [activeTab, setActiveTab] = useState<'control' | 'products' | 'looks' | 'analytics' | 'export'>('control')
@@ -425,10 +425,14 @@ export default function AdminPage() {
                 ? 'bg-green-500/20 text-green-400' 
                 : showStatus === 'paused'
                 ? 'bg-yellow-500/20 text-yellow-400'
+                : showStatus === 'ended'
+                ? 'bg-red-500/20 text-red-400'
+                : showStatus === 'doors_open'
+                ? 'bg-blue-500/20 text-blue-400'
                 : 'bg-gray-500/20 text-gray-400'
             )}>
               <Radio className="w-3 h-3" />
-              <span className="uppercase tracking-wider">{showStatus}</span>
+              <span className="uppercase tracking-wider">{showStatus.replace('_', ' ')}</span>
             </div>
             
             <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -499,7 +503,7 @@ export default function AdminPage() {
                         <select
                           value={showStatus}
                           onChange={async (e) => {
-                            const newStatus = e.target.value as any
+                            const newStatus = e.target.value as 'preparing' | 'doors_open' | 'live' | 'paused' | 'ended'
                             try {
                               const { error } = await supabase
                                 .from('events')
@@ -510,20 +514,22 @@ export default function AdminPage() {
                                 .eq('status', 'upcoming')
                               
                               if (!error) {
-                                setShowStatus(newStatus)
+                                setShowStatus(newStatus as any)
                                 emit('show:status', { status: newStatus })
                                 
-                                const messages = {
+                                const messages: Record<string, string> = {
                                   'preparing': 'Show in preparation mode',
+                                  'doors_open': 'Doors are open - Timer visible',
                                   'live': 'Show is now LIVE!',
-                                  'paused': 'Show paused',
+                                  'paused': 'Show paused - Timer visible',
                                   'ended': 'Show ended'
                                 }
                                 
                                 toast.success(messages[newStatus], { 
                                   icon: newStatus === 'live' ? '🎬' : 
                                         newStatus === 'paused' ? '⏸️' : 
-                                        newStatus === 'ended' ? '🏁' : '🎯'
+                                        newStatus === 'ended' ? '🏁' : 
+                                        newStatus === 'doors_open' ? '🚪' : '🎯'
                                 })
                               }
                             } catch (error) {
@@ -533,6 +539,7 @@ export default function AdminPage() {
                           className="bg-gray-900 border border-gray-800 rounded px-4 py-2 text-white focus:border-luxury-gold focus:outline-none"
                         >
                           <option value="preparing">🎯 Preparing</option>
+                          <option value="doors_open">🚪 Doors Open</option>
                           <option value="live">🎬 Live</option>
                           <option value="paused">⏸️ Paused</option>
                           <option value="ended">🏁 Ended</option>
@@ -546,9 +553,11 @@ export default function AdminPage() {
                             ? 'bg-yellow-500/20 text-yellow-400'
                             : showStatus === 'ended'
                             ? 'bg-red-500/20 text-red-400'
+                            : showStatus === 'doors_open'
+                            ? 'bg-blue-500/20 text-blue-400'
                             : 'bg-gray-500/20 text-gray-400'
                         )}>
-                          <span className="uppercase tracking-wider">{showStatus}</span>
+                          <span className="uppercase tracking-wider">{showStatus.replace('_', ' ')}</span>
                         </div>
                       </div>
                     </div>

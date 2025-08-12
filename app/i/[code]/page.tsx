@@ -70,7 +70,7 @@ export default function PersonalInvitationPage() {
   const [currentConfirmationIndex, setCurrentConfirmationIndex] = useState(0)
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [sessionId] = useState(() => crypto.randomUUID())
-  const [showState, setShowState] = useState<'preparing' | 'live' | 'paused' | 'ended'>('preparing')
+  const [showState, setShowState] = useState<'preparing' | 'doors_open' | 'live' | 'paused' | 'ended'>('preparing')
 
   // Fetch invitation data
   useEffect(() => {
@@ -399,11 +399,11 @@ END:VCALENDAR`
     )
   }
 
-  // Show paused state
-  if (showState === 'paused' && hasConfirmed) {
+  // Show doors open state - Timer still visible
+  if (showState === 'doors_open' && hasConfirmed) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center px-6">
+        <div className="text-center px-6 max-w-2xl mx-auto">
           <Image 
             src="/logo.png" 
             alt="Second Story" 
@@ -414,12 +414,89 @@ END:VCALENDAR`
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
+            className="space-y-6"
+          >
+            <Sparkles className="w-16 h-16 mx-auto text-black" />
+            <h1 className="text-4xl font-light">Doors are open!</h1>
+            <p className="text-lg text-gray-600">Welcome, {guest?.name.split(' ')[0]}</p>
+            
+            {/* Countdown Timer */}
+            <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-6 mt-6">
+              <p className="text-xs tracking-[0.3em] uppercase text-gray-600 mb-4">
+                Show begins in
+              </p>
+              <div className="grid grid-cols-4 gap-4">
+                {[
+                  { value: countdown.days, label: 'Days' },
+                  { value: countdown.hours, label: 'Hours' },
+                  { value: countdown.minutes, label: 'Minutes' },
+                  { value: countdown.seconds, label: 'Seconds' }
+                ].map((item, index) => (
+                  <div key={item.label} className="text-center">
+                    <div className="text-2xl font-light mb-1">
+                      {String(item.value).padStart(2, '0')}
+                    </div>
+                    <p className="text-xs tracking-widest uppercase text-gray-500">
+                      {item.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <p className="text-sm text-gray-500">You'll be redirected automatically when the show starts</p>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show paused state - Timer still visible
+  if (showState === 'paused' && hasConfirmed) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center px-6 max-w-2xl mx-auto">
+          <Image 
+            src="/logo.png" 
+            alt="Second Story" 
+            width={300} 
+            height={90} 
+            className="mx-auto mb-8"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
           >
             <Clock className="w-16 h-16 mx-auto text-gray-400 animate-pulse" />
-            <h1 className="text-3xl font-light">The show will begin shortly</h1>
-            <p className="text-gray-600">Please stay on this page</p>
-            <p className="text-sm text-gray-400">We'll automatically redirect you when ready</p>
+            <h1 className="text-3xl font-light">The show is paused</h1>
+            <p className="text-gray-600">We'll resume shortly</p>
+            
+            {/* Countdown Timer */}
+            <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-6 mt-6">
+              <p className="text-xs tracking-[0.3em] uppercase text-gray-600 mb-4">
+                Event scheduled for
+              </p>
+              <div className="grid grid-cols-4 gap-4">
+                {[
+                  { value: countdown.days, label: 'Days' },
+                  { value: countdown.hours, label: 'Hours' },
+                  { value: countdown.minutes, label: 'Minutes' },
+                  { value: countdown.seconds, label: 'Seconds' }
+                ].map((item, index) => (
+                  <div key={item.label} className="text-center">
+                    <div className="text-2xl font-light mb-1">
+                      {String(item.value).padStart(2, '0')}
+                    </div>
+                    <p className="text-xs tracking-widest uppercase text-gray-500">
+                      {item.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <p className="text-sm text-gray-400">Please stay on this page</p>
           </motion.div>
         </div>
       </div>
