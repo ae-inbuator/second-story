@@ -1,0 +1,20 @@
+{
+  "name": "second-story-socket-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for Second Story live fashion show",
+  "main": "socket.js",
+  "scripts": {
+    "start": "node socket.js",
+    "dev": "nodemon socket.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1",
+    "http": "^0.0.1-security"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

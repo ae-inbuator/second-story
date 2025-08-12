@@ -7,16 +7,24 @@ const { createServer } = require('http')
 const { Server } = require('socket.io')
 
 // Load environment variables
-const PORT = process.env.SOCKET_PORT || 3001
+const PORT = process.env.PORT || process.env.SOCKET_PORT || 3001
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000'
 const NODE_ENV = process.env.NODE_ENV || 'development'
+
+// Allow multiple origins in production
+const allowedOrigins = NODE_ENV === 'production' 
+  ? [
+      'https://second-story-three.vercel.app',
+      'https://second-story.vercel.app',
+      'https://*.vercel.app',
+      CLIENT_URL
+    ]
+  : ['http://localhost:3000', 'http://localhost:3001']
 
 const httpServer = createServer()
 const io = new Server(httpServer, {
   cors: {
-    origin: NODE_ENV === 'production' 
-      ? CLIENT_URL 
-      : ['http://localhost:3000', 'http://localhost:3001'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   },
