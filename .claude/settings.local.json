@@ -20,7 +20,8 @@
       "Bash(git clone:*)",
       "Bash(node:*)",
       "Bash(npm run typecheck:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
