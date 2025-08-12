@@ -84,6 +84,39 @@ export default function PersonalInvitationPage() {
     return () => clearInterval(pollInterval)
   }, [code])
 
+  // Listen for WebSocket events
+  useEffect(() => {
+    // Import socket from a proper WebSocket hook or service
+    const handleTimerUpdate = (data: any) => {
+      if (event && data.countdown_target) {
+        setEvent(prev => prev ? { ...prev, countdown_target: data.countdown_target } : prev)
+      }
+    }
+    
+    const handleStatusUpdate = (data: any) => {
+      if (data.status) {
+        setShowState(data.status)
+        
+        // Auto-redirect if show goes live
+        if (data.status === 'live' && hasConfirmed && guest) {
+          router.push(`/show?guest=${guest.id}&session=${sessionId}`)
+        }
+      }
+    }
+    
+    // Set up event listeners if WebSocket is available
+    if (typeof window !== 'undefined' && (window as any).socket) {
+      const socket = (window as any).socket
+      socket.on('timer:updated', handleTimerUpdate)
+      socket.on('show:status', handleStatusUpdate)
+      
+      return () => {
+        socket.off('timer:updated', handleTimerUpdate)
+        socket.off('show:status', handleStatusUpdate)
+      }
+    }
+  }, [event, hasConfirmed, guest, sessionId, router])
+
   // Animate counter
   useEffect(() => {
     const interval = setInterval(() => {
@@ -286,6 +319,14 @@ export default function PersonalInvitationPage() {
       setHasConfirmed(true)
       setShowConfetti(true)
       setTargetCount(prev => prev + 1)
+      
+      // Save session for auto-login
+      localStorage.setItem('secondStorySession', JSON.stringify({
+        guestId: guest.id,
+        sessionId: sessionId,
+        invitationCode: code,
+        confirmedAt: new Date().toISOString()
+      }))
       
       // Hide confetti after 5 seconds
       setTimeout(() => setShowConfetti(false), 5000)

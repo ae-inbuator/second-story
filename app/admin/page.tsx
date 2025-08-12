@@ -495,34 +495,62 @@ export default function AdminPage() {
                   <div className="bg-gray-950 border border-gray-900 rounded-lg p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="text-lg font-medium tracking-wide">Show Control</h2>
-                      <button
-                        onClick={toggleShowStatus}
-                        className={cn(
-                          "flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200",
-                          showStatus === 'live'
-                            ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={showStatus}
+                          onChange={async (e) => {
+                            const newStatus = e.target.value as any
+                            try {
+                              const { error } = await supabase
+                                .from('events')
+                                .update({ 
+                                  show_status: newStatus,
+                                  show_starts_at: newStatus === 'live' ? new Date().toISOString() : null
+                                })
+                                .eq('status', 'upcoming')
+                              
+                              if (!error) {
+                                setShowStatus(newStatus)
+                                emit('show:status', { status: newStatus })
+                                
+                                const messages = {
+                                  'preparing': 'Show in preparation mode',
+                                  'live': 'Show is now LIVE!',
+                                  'paused': 'Show paused',
+                                  'ended': 'Show ended'
+                                }
+                                
+                                toast.success(messages[newStatus], { 
+                                  icon: newStatus === 'live' ? '🎬' : 
+                                        newStatus === 'paused' ? '⏸️' : 
+                                        newStatus === 'ended' ? '🏁' : '🎯'
+                                })
+                              }
+                            } catch (error) {
+                              toast.error('Failed to update status')
+                            }
+                          }}
+                          className="bg-gray-900 border border-gray-800 rounded px-4 py-2 text-white focus:border-luxury-gold focus:outline-none"
+                        >
+                          <option value="preparing">🎯 Preparing</option>
+                          <option value="live">🎬 Live</option>
+                          <option value="paused">⏸️ Paused</option>
+                          <option value="ended">🏁 Ended</option>
+                        </select>
+                        
+                        <div className={cn(
+                          "px-3 py-1.5 rounded-full text-xs",
+                          showStatus === 'live' 
+                            ? 'bg-green-500/20 text-green-400' 
                             : showStatus === 'paused'
-                            ? "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
-                            : "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                        )}
-                      >
-                        {showStatus === 'live' ? (
-                          <>
-                            <Pause className="w-4 h-4" />
-                            <span>Pause Show</span>
-                          </>
-                        ) : showStatus === 'paused' ? (
-                          <>
-                            <Play className="w-4 h-4" />
-                            <span>Resume Show</span>
-                          </>
-                        ) : (
-                          <>
-                            <Play className="w-4 h-4" />
-                            <span>Start Show</span>
-                          </>
-                        )}
-                      </button>
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : showStatus === 'ended'
+                            ? 'bg-red-500/20 text-red-400'
+                            : 'bg-gray-500/20 text-gray-400'
+                        )}>
+                          <span className="uppercase tracking-wider">{showStatus}</span>
+                        </div>
+                      </div>
                     </div>
                     
                     <div className="text-center py-6">
@@ -657,6 +685,8 @@ export default function AdminPage() {
                           .eq('status', 'upcoming')
                         
                         if (!error) {
+                          // Emit timer update via WebSocket
+                          emit('timer:updated', { countdown_target: countdownTarget.toISOString() })
                           toast.success('Countdown target updated!', { icon: '⏰' })
                         } else {
                           toast.error('Failed to update countdown')

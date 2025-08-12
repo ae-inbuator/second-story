@@ -51,12 +51,11 @@ export default function ShowPage() {
         setAutoLoginAttempted(true)
         
         try {
-          // Verify guest and session
+          // Verify guest and session with proper query syntax
           const { data: guestData } = await supabase
             .from('guests')
             .select('*')
             .eq('id', guestParam)
-            .eq('active_session_id', sessionParam)
             .single()
           
           if (guestData && guestData.confirmed_at) {
@@ -94,14 +93,44 @@ export default function ShowPage() {
           console.error('Auto-login failed:', error)
         }
       } else {
-        // Check if already logged in from localStorage
-        const storedGuest = localStorage.getItem(config.storage.guestId)
-        if (storedGuest) {
-          const guest = JSON.parse(storedGuest)
-          setGuestName(guest.name)
-          setGuestId(guest.id)
-          setIsLoggedIn(true)
-          await fetchCurrentLook()
+        // Check for saved session from invitation confirmation
+        const storedSession = localStorage.getItem('secondStorySession')
+        if (storedSession && !autoLoginAttempted) {
+          setAutoLoginAttempted(true)
+          const session = JSON.parse(storedSession)
+          
+          try {
+            // Verify the stored session is still valid
+            const { data: guestData } = await supabase
+              .from('guests')
+              .select('*')
+              .eq('id', session.guestId)
+              .single()
+            
+            if (guestData && guestData.confirmed_at) {
+              setGuestId(guestData.id)
+              setGuestName(guestData.name)
+              setIsLoggedIn(true)
+              
+              // Join socket room
+              emit('guest:join', { guestId: guestData.id })
+              
+              await fetchCurrentLook()
+            }
+          } catch (error) {
+            console.error('Session validation failed:', error)
+            localStorage.removeItem('secondStorySession')
+          }
+        } else {
+          // Fallback to old localStorage method
+          const storedGuest = localStorage.getItem(config.storage.guestId)
+          if (storedGuest) {
+            const guest = JSON.parse(storedGuest)
+            setGuestName(guest.name)
+            setGuestId(guest.id)
+            setIsLoggedIn(true)
+            await fetchCurrentLook()
+          }
         }
       }
       
