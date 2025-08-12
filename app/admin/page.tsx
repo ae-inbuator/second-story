@@ -74,6 +74,7 @@ export default function AdminPage() {
   const [showStatus, setShowStatus] = useState<'preparing' | 'doors_open' | 'live' | 'paused' | 'ended'>('preparing')
   const [announcement, setAnnouncement] = useState('')
   const [announcementDuration, setAnnouncementDuration] = useState(10)
+  const [breakDuration, setBreakDuration] = useState(15) // Default 15 min break
   const [activeTab, setActiveTab] = useState<'control' | 'products' | 'looks' | 'analytics' | 'export'>('control')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   
@@ -500,6 +501,22 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="text-lg font-medium tracking-wide">Show Control</h2>
                       <div className="flex items-center gap-2">
+                        {/* Break Duration Input - Show when selecting Intermission */}
+                        {showStatus !== 'paused' && (
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-500">Break Duration:</label>
+                            <input
+                              type="number"
+                              value={breakDuration}
+                              onChange={(e) => setBreakDuration(Math.max(1, Math.min(60, Number(e.target.value))))}
+                              min="1"
+                              max="60"
+                              className="bg-gray-900 border border-gray-800 rounded px-2 py-1 text-white w-16 text-center focus:border-luxury-gold focus:outline-none"
+                            />
+                            <span className="text-xs text-gray-500">min</span>
+                          </div>
+                        )}
+                        
                         <select
                           value={showStatus}
                           onChange={async (e) => {
@@ -515,21 +532,27 @@ export default function AdminPage() {
                               
                               if (!error) {
                                 setShowStatus(newStatus as any)
-                                emit('show:status', { status: newStatus })
+                                
+                                // Emit with break duration if going to intermission
+                                const eventData: any = { status: newStatus }
+                                if (newStatus === 'paused') {
+                                  eventData.breakDuration = breakDuration
+                                }
+                                emit('show:status', eventData)
                                 
                                 const messages: Record<string, string> = {
                                   'preparing': 'Show in preparation mode',
-                                  'doors_open': 'Doors are open - Timer visible',
+                                  'doors_open': 'Doors are open - Cocktail hour',
                                   'live': 'Show is now LIVE!',
-                                  'paused': 'Show paused - Timer visible',
+                                  'paused': `Intermission - ${breakDuration} minute break`,
                                   'ended': 'Show ended'
                                 }
                                 
                                 toast.success(messages[newStatus], { 
                                   icon: newStatus === 'live' ? '🎬' : 
-                                        newStatus === 'paused' ? '⏸️' : 
+                                        newStatus === 'paused' ? '☕' : 
                                         newStatus === 'ended' ? '🏁' : 
-                                        newStatus === 'doors_open' ? '🚪' : '🎯'
+                                        newStatus === 'doors_open' ? '🥂' : '🎯'
                                 })
                               }
                             } catch (error) {
@@ -539,9 +562,9 @@ export default function AdminPage() {
                           className="bg-gray-900 border border-gray-800 rounded px-4 py-2 text-white focus:border-luxury-gold focus:outline-none"
                         >
                           <option value="preparing">🎯 Preparing</option>
-                          <option value="doors_open">🚪 Doors Open</option>
+                          <option value="doors_open">🥂 Cocktail Hour</option>
                           <option value="live">🎬 Live</option>
-                          <option value="paused">⏸️ Paused</option>
+                          <option value="paused">☕ Intermission</option>
                           <option value="ended">🏁 Ended</option>
                         </select>
                         

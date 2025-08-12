@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import config from '@/lib/config'
+import { useWebSocket } from '@/hooks/useWebSocket'
 
 interface GuestData {
   id: string
@@ -71,6 +72,12 @@ export default function PersonalInvitationPage() {
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [sessionId] = useState(() => crypto.randomUUID())
   const [showState, setShowState] = useState<'preparing' | 'doors_open' | 'live' | 'paused' | 'ended'>('preparing')
+  const [breakEndTime, setBreakEndTime] = useState<Date | null>(null)
+  const [breakMinutes, setBreakMinutes] = useState(0)
+  const [breakSeconds, setBreakSeconds] = useState(0)
+  
+  // WebSocket connection
+  const { on, off, emit } = useWebSocket()
 
   // Fetch invitation data
   useEffect(() => {
@@ -86,7 +93,8 @@ export default function PersonalInvitationPage() {
 
   // Listen for WebSocket events
   useEffect(() => {
-    // Import socket from a proper WebSocket hook or service
+    if (!on || !off) return
+    
     const handleTimerUpdate = (data: any) => {
       if (event && data.countdown_target) {
         setEvent(prev => prev ? { ...prev, countdown_target: data.countdown_target } : prev)
@@ -97,25 +105,55 @@ export default function PersonalInvitationPage() {
       if (data.status) {
         setShowState(data.status)
         
-        // Auto-redirect if show goes live
-        if (data.status === 'live' && hasConfirmed && guest) {
-          router.push(`/show?guest=${guest.id}&session=${sessionId}`)
+        // If intermission, set break timer
+        if (data.status === 'paused' && data.breakDuration) {
+          const endTime = new Date()
+          endTime.setMinutes(endTime.getMinutes() + data.breakDuration)
+          setBreakEndTime(endTime)
         }
       }
     }
     
-    // Set up event listeners if WebSocket is available
-    if (typeof window !== 'undefined' && (window as any).socket) {
-      const socket = (window as any).socket
-      socket.on('timer:updated', handleTimerUpdate)
-      socket.on('show:status', handleStatusUpdate)
-      
-      return () => {
-        socket.off('timer:updated', handleTimerUpdate)
-        socket.off('show:status', handleStatusUpdate)
-      }
+    // Set up event listeners
+    on('timer:updated', handleTimerUpdate)
+    on('show:status', handleStatusUpdate)
+    
+    return () => {
+      off('timer:updated', handleTimerUpdate)
+      off('show:status', handleStatusUpdate)
     }
-  }, [event, hasConfirmed, guest, sessionId, router])
+  }, [event, on, off])
+
+  // Break timer countdown
+  useEffect(() => {
+    if (showState === 'paused') {
+      if (!breakEndTime) {
+        // Default 15 min break if no end time set
+        const defaultBreak = new Date()
+        defaultBreak.setMinutes(defaultBreak.getMinutes() + 15)
+        setBreakEndTime(defaultBreak)
+      }
+      
+      const timer = setInterval(() => {
+        if (breakEndTime) {
+          const now = new Date()
+          const diff = breakEndTime.getTime() - now.getTime()
+          
+          if (diff > 0) {
+            const mins = Math.floor(diff / 60000)
+            const secs = Math.floor((diff % 60000) / 1000)
+            setBreakMinutes(mins)
+            setBreakSeconds(secs)
+          } else {
+            setBreakMinutes(0)
+            setBreakSeconds(0)
+          }
+        }
+      }, 1000)
+      
+      return () => clearInterval(timer)
+    }
+  }, [showState, breakEndTime])
 
   // Animate counter
   useEffect(() => {
@@ -182,11 +220,7 @@ export default function PersonalInvitationPage() {
       
       if (eventData && eventData.show_status !== showState) {
         setShowState(eventData.show_status as any)
-        
-        // If show is live and guest is confirmed, redirect
-        if (eventData.show_status === 'live' && hasConfirmed) {
-          router.push(`/show?guest=${guest.id}&session=${sessionId}`)
-        }
+        // NO redirect - handle all states in-place
       }
     } catch (error) {
       console.error('Error checking show status:', error)
@@ -227,12 +261,7 @@ export default function PersonalInvitationPage() {
         setEvent(eventData)
         setShowState(eventData.show_status || 'preparing')
         
-        // Check if event is live and guest is confirmed
-        if (eventData.show_status === 'live' && guestData.confirmed_at) {
-          // Auto-redirect to show
-          router.push(`/show?guest=${guestData.id}&session=${sessionId}`)
-          return
-        }
+        // NO redirect - handle all states in-place
         
         // Get registration stats
         const { count } = await supabase
@@ -399,7 +428,7 @@ END:VCALENDAR`
     )
   }
 
-  // Show doors open state - Timer still visible
+  // Show doors open state - Cocktail hour (NO timer)
   if (showState === 'doors_open' && hasConfirmed) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -416,42 +445,63 @@ END:VCALENDAR`
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            <Sparkles className="w-16 h-16 mx-auto text-black" />
-            <h1 className="text-4xl font-light">Doors are open!</h1>
-            <p className="text-lg text-gray-600">Welcome, {guest?.name.split(' ')[0]}</p>
+            <div className="text-6xl mb-4">🥂</div>
+            <h1 className="text-4xl sm:text-5xl font-light">Welcome to Second Story</h1>
+            <p className="text-xl text-gray-600 mb-2">Dear {guest?.name.split(' ')[0]},</p>
             
-            {/* Countdown Timer */}
-            <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-6 mt-6">
-              <p className="text-xs tracking-[0.3em] uppercase text-gray-600 mb-4">
-                Show begins in
-              </p>
-              <div className="grid grid-cols-4 gap-4">
-                {[
-                  { value: countdown.days, label: 'Days' },
-                  { value: countdown.hours, label: 'Hours' },
-                  { value: countdown.minutes, label: 'Minutes' },
-                  { value: countdown.seconds, label: 'Seconds' }
-                ].map((item, index) => (
-                  <div key={item.label} className="text-center">
-                    <div className="text-2xl font-light mb-1">
-                      {String(item.value).padStart(2, '0')}
-                    </div>
-                    <p className="text-xs tracking-widest uppercase text-gray-500">
-                      {item.label}
-                    </p>
-                  </div>
-                ))}
-              </div>
+            <div className="border-t border-b border-gray-200 py-6 my-8">
+              <p className="text-lg text-gray-700 mb-2">The cocktail hour has begun</p>
+              <p className="text-gray-600 italic">Mingle, explore, and prepare for an extraordinary show</p>
             </div>
             
-            <p className="text-sm text-gray-500">You'll be redirected automatically when the show starts</p>
+            <motion.div
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-sm text-gray-500"
+            >
+              The show will begin shortly
+            </motion.div>
           </motion.div>
         </div>
       </div>
     )
   }
 
-  // Show paused state - Timer still visible
+  // Show LIVE state - Embedded show experience
+  if (showState === 'live' && hasConfirmed) {
+    return (
+      <div className="min-h-screen bg-black">
+        {/* Minimal header */}
+        <div className="fixed top-0 left-0 right-0 bg-black/90 backdrop-blur-sm z-50 px-4 py-3 border-b border-gray-800">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <Image 
+              src="/logo-white.png" 
+              alt="Second Story" 
+              width={120} 
+              height={36}
+              className="brightness-0 invert"
+            />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <span className="text-white text-xs tracking-widest uppercase">Live</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Embedded show */}
+        <iframe 
+          src={`/show?guest=${guest?.id}&session=${sessionId}`}
+          className="w-full h-screen pt-14"
+          style={{ border: 'none' }}
+          allow="fullscreen"
+        />
+      </div>
+    )
+  }
+
+  // Show INTERMISSION state - Break timer
   if (showState === 'paused' && hasConfirmed) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -468,35 +518,40 @@ END:VCALENDAR`
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            <Clock className="w-16 h-16 mx-auto text-gray-400 animate-pulse" />
-            <h1 className="text-3xl font-light">The show is paused</h1>
-            <p className="text-gray-600">We'll resume shortly</p>
+            <div className="text-6xl mb-4">☕</div>
+            <h1 className="text-4xl sm:text-5xl font-light">Intermission</h1>
             
-            {/* Countdown Timer */}
-            <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-6 mt-6">
-              <p className="text-xs tracking-[0.3em] uppercase text-gray-600 mb-4">
-                Event scheduled for
-              </p>
-              <div className="grid grid-cols-4 gap-4">
-                {[
-                  { value: countdown.days, label: 'Days' },
-                  { value: countdown.hours, label: 'Hours' },
-                  { value: countdown.minutes, label: 'Minutes' },
-                  { value: countdown.seconds, label: 'Seconds' }
-                ].map((item, index) => (
-                  <div key={item.label} className="text-center">
-                    <div className="text-2xl font-light mb-1">
-                      {String(item.value).padStart(2, '0')}
+            <div className="border-t border-b border-gray-200 py-6 my-8">
+              <p className="text-lg text-gray-700 mb-4">Perfect time to refresh your champagne</p>
+              
+              {/* Break Timer */}
+              <div className="bg-gray-50 rounded-lg p-6">
+                <p className="text-xs tracking-[0.3em] uppercase text-gray-600 mb-4">
+                  Resuming in
+                </p>
+                <div className="flex justify-center gap-4">
+                  <div className="text-center">
+                    <div className="text-4xl font-light mb-1">
+                      {String(breakMinutes).padStart(2, '0')}
                     </div>
                     <p className="text-xs tracking-widest uppercase text-gray-500">
-                      {item.label}
+                      Minutes
                     </p>
                   </div>
-                ))}
+                  <div className="text-4xl font-light">:</div>
+                  <div className="text-center">
+                    <div className="text-4xl font-light mb-1">
+                      {String(breakSeconds).padStart(2, '0')}
+                    </div>
+                    <p className="text-xs tracking-widest uppercase text-gray-500">
+                      Seconds
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
             
-            <p className="text-sm text-gray-400">Please stay on this page</p>
+            <p className="text-sm text-gray-500">We'll resume the show shortly</p>
           </motion.div>
         </div>
       </div>
@@ -530,12 +585,15 @@ END:VCALENDAR`
                 Guests #1-10 have priority access for the next 24 hours
               </p>
             </div>
-            <p className="text-gray-600">
+            <p className="text-gray-600 mb-2">
               Contact your personal shopper to secure your pieces
             </p>
-            <a href="mailto:shop@secondstory.com" className="inline-block mt-4 text-black underline">
+            <a href="mailto:shop@secondstory.com" className="inline-block text-black underline mb-4">
               shop@secondstory.com
             </a>
+            <p className="text-sm text-gray-500 italic">
+              Check your email for detailed purchase instructions
+            </p>
           </motion.div>
         </div>
       </div>
