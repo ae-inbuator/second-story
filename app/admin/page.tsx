@@ -177,7 +177,6 @@ export default function AdminPage() {
         const activeIndex = data.findIndex(l => l.active)
         if (activeIndex >= 0) {
           setCurrentLookIndex(activeIndex)
-          setShowStatus('live')
         }
       }
     } catch (error) {
