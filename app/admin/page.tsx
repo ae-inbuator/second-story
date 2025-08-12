@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { useWebSocket } from '@/hooks/useWebSocket'
+import Link from 'next/link'
 import { ExportPanel } from '@/components/admin/export-panel'
 import { StatsSkeleton } from '@/components/ui/skeleton'
 import { ProductUpload } from '@/components/admin/product-upload'
@@ -451,6 +452,18 @@ export default function AdminPage() {
                 </>
               )}
             </div>
+          </div>
+
+          {/* Admin V2 Toggle */}
+          <div className="flex items-center">
+            <Link
+              href="/admin-v2"
+              className="flex items-center gap-2 px-4 py-2 bg-luxury-gold/10 hover:bg-luxury-gold/20 border border-luxury-gold/30 rounded-lg transition-all duration-200 text-luxury-gold hover:text-white group"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="text-sm font-medium">Try Admin v2.0</span>
+              <ArrowUpRight className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity" />
+            </Link>
           </div>
         </div>
         
