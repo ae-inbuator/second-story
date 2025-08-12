@@ -98,6 +98,18 @@ io.on('connection', (socket) => {
     })
   })
   
+  // Handle show status changes (admin)
+  socket.on('show:status', (data) => {
+    console.log('Show status changed:', data)
+    io.emit('show:status', data)
+  })
+  
+  // Handle timer updates (admin)
+  socket.on('timer:updated', (data) => {
+    console.log('Timer updated:', data)
+    io.emit('timer:updated', data)
+  })
+  
   // Handle announcements (admin)
   socket.on('announcement', (data) => {
     console.log('Announcement:', data.message)
