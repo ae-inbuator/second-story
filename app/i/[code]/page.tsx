@@ -12,10 +12,13 @@ import {
   Clock, 
   MapPin, 
   Calendar,
-  User,
-  X
+  Users,
+  X,
+  ArrowRight,
+  Heart
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
+import config from '@/lib/config'
 
 interface GuestData {
   id: string
@@ -25,6 +28,7 @@ interface GuestData {
   invitation_code: string
   confirmed_at?: string
   vip_level?: string
+  active_session_id?: string
 }
 
 interface EventData {
@@ -38,6 +42,14 @@ interface EventData {
   max_capacity: number
   dress_code?: string
   description?: string
+  show_status?: string
+  doors_open_at?: string
+  show_starts_at?: string
+}
+
+interface RecentConfirmation {
+  name: string
+  confirmed_at: string
 }
 
 export default function PersonalInvitationPage() {
@@ -51,30 +63,65 @@ export default function PersonalInvitationPage() {
   const [isConfirming, setIsConfirming] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
   const [hasConfirmed, setHasConfirmed] = useState(false)
-  const [spotsLeft, setSpotsLeft] = useState(50)
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0 })
+  const [registrationCount, setRegistrationCount] = useState(0)
+  const [targetCount, setTargetCount] = useState(0)
+  const [recentConfirmations, setRecentConfirmations] = useState<RecentConfirmation[]>([])
+  const [currentConfirmationIndex, setCurrentConfirmationIndex] = useState(0)
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+  const [sessionId] = useState(() => crypto.randomUUID())
 
+  // Fetch invitation data
   useEffect(() => {
     fetchInvitationData()
   }, [code])
 
+  // Animate counter
   useEffect(() => {
-    if (event) {
-      const timer = setInterval(() => {
-        const eventDate = new Date(event.date)
-        const now = new Date()
-        const diff = eventDate.getTime() - now.getTime()
-        
-        if (diff > 0) {
-          const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-          setTimeLeft({ days, hours, minutes })
-        }
-      }, 1000)
+    const interval = setInterval(() => {
+      setRegistrationCount(prev => {
+        if (prev < targetCount) return Math.min(prev + 1, targetCount)
+        if (prev > targetCount) return Math.max(prev - 1, targetCount)
+        return prev
+      })
+    }, 50)
+    
+    return () => clearInterval(interval)
+  }, [targetCount])
+
+  // Rotate recent confirmations
+  useEffect(() => {
+    if (recentConfirmations.length <= 1) return
+    
+    const interval = setInterval(() => {
+      setCurrentConfirmationIndex(prev => 
+        (prev + 1) % recentConfirmations.length
+      )
+    }, 4000)
+    
+    return () => clearInterval(interval)
+  }, [recentConfirmations])
+
+  // Countdown timer with seconds
+  useEffect(() => {
+    if (!event) return
+    
+    const timer = setInterval(() => {
+      const eventDate = new Date(event.date + 'T' + event.time)
+      const now = new Date()
+      const diff = eventDate.getTime() - now.getTime()
       
-      return () => clearInterval(timer)
-    }
+      if (diff > 0) {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+        setCountdown({ days, hours, minutes, seconds })
+      } else {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+      }
+    }, 1000)
+    
+    return () => clearInterval(timer)
   }, [event])
 
   async function fetchInvitationData() {
@@ -90,21 +137,7 @@ export default function PersonalInvitationPage() {
         .eq('invitation_code', code.toUpperCase())
         .single()
       
-      if (guestError) {
-        console.error('Guest fetch error:', guestError)
-        if (guestError.code === 'PGRST116') {
-          // No matching record found
-          toast.error('Invalid invitation code')
-          setTimeout(() => router.push('/'), 3000)
-        } else {
-          // Other database error
-          toast.error('Error loading invitation. Please try again.')
-        }
-        setIsLoading(false)
-        return
-      }
-      
-      if (!guestData) {
+      if (guestError || !guestData) {
         toast.error('Invalid invitation code')
         setTimeout(() => router.push('/'), 3000)
         setIsLoading(false)
@@ -114,31 +147,51 @@ export default function PersonalInvitationPage() {
       setGuest(guestData)
       setHasConfirmed(!!guestData.confirmed_at)
       
-      // Get upcoming event - don't fail if no event
-      const { data: eventData, error: eventError } = await supabase
+      // Get event data
+      const { data: eventData } = await supabase
         .from('events')
         .select('*')
         .eq('status', 'upcoming')
         .single()
       
-      if (!eventError && eventData) {
+      if (eventData) {
         setEvent(eventData)
         
-        // Get current capacity
+        // Check if event is live and guest is confirmed
+        if (eventData.show_status === 'live' && guestData.confirmed_at) {
+          // Auto-redirect to show
+          router.push(`/show?guest=${guestData.id}&session=${sessionId}`)
+          return
+        }
+        
+        // Get registration stats
         const { count } = await supabase
           .from('guests')
           .select('*', { count: 'exact', head: true })
           .not('confirmed_at', 'is', null)
         
         if (count !== null) {
-          setSpotsLeft(eventData.max_capacity - count)
+          setTargetCount(count)
         }
-      } else if (eventError && eventError.code !== 'PGRST116') {
-        console.error('Event fetch error:', eventError)
+        
+        // Get recent confirmations for social proof
+        const { data: recent } = await supabase
+          .from('guests')
+          .select('name, confirmed_at')
+          .not('confirmed_at', 'is', null)
+          .order('confirmed_at', { ascending: false })
+          .limit(5)
+        
+        if (recent) {
+          setRecentConfirmations(recent.map(r => ({
+            name: r.name.split(' ')[0] + ' ' + r.name.split(' ')[1]?.charAt(0) + '.',
+            confirmed_at: r.confirmed_at
+          })))
+        }
       }
     } catch (error) {
-      console.error('Unexpected error:', error)
-      toast.error('Something went wrong. Please refresh and try again.')
+      console.error('Error:', error)
+      toast.error('Something went wrong')
     } finally {
       setIsLoading(false)
     }
@@ -150,11 +203,27 @@ export default function PersonalInvitationPage() {
     setIsConfirming(true)
     
     try {
+      // Check for active session conflict
+      const { data: currentGuest } = await supabase
+        .from('guests')
+        .select('active_session_id')
+        .eq('id', guest.id)
+        .single()
+      
+      if (currentGuest?.active_session_id && currentGuest.active_session_id !== sessionId) {
+        toast.error('This invitation is being used elsewhere')
+        setIsConfirming(false)
+        return
+      }
+      
+      // Update confirmation with session
       const { error } = await supabase
         .from('guests')
         .update({ 
           confirmed_at: new Date().toISOString(),
-          registered_at: new Date().toISOString()
+          registered_at: new Date().toISOString(),
+          active_session_id: sessionId,
+          last_activity_at: new Date().toISOString()
         })
         .eq('id', guest.id)
       
@@ -162,7 +231,7 @@ export default function PersonalInvitationPage() {
       
       setHasConfirmed(true)
       setShowConfetti(true)
-      toast.success('See you there!')
+      setTargetCount(prev => prev + 1)
       
       // Hide confetti after 5 seconds
       setTimeout(() => setShowConfetti(false), 5000)
@@ -174,20 +243,56 @@ export default function PersonalInvitationPage() {
     }
   }
 
+  function addToCalendar() {
+    if (!event) return
+    
+    const eventDate = new Date(event.date + 'T' + event.time)
+    const endDate = new Date(eventDate.getTime() + 3 * 60 * 60 * 1000) // 3 hours
+    
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:${eventDate.toISOString().replace(/[-:]/g, '').replace('.000', '')}
+DTEND:${endDate.toISOString().replace(/[-:]/g, '').replace('.000', '')}
+SUMMARY:Second Story - ${event.name}
+DESCRIPTION:An exclusive evening of curated luxury. Your invitation code: ${code.toUpperCase()}
+LOCATION:${event.location}, ${event.address}
+END:VEVENT
+END:VCALENDAR`
+    
+    const blob = new Blob([icsContent], { type: 'text/calendar' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'second-story-event.ics'
+    a.click()
+    URL.revokeObjectURL(url)
+    
+    toast.success('Calendar event downloaded')
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
         >
-          <Loader2 className="w-8 h-8 text-black" />
+          <div className="w-16 h-16 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <Image 
+            src="/logo.png" 
+            alt="Second Story" 
+            width={150} 
+            height={45} 
+            className="opacity-90"
+          />
         </motion.div>
       </div>
     )
   }
 
-  if (!guest) {
+  if (!guest || !event) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -199,22 +304,9 @@ export default function PersonalInvitationPage() {
     )
   }
 
-  if (!event) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center px-6">
-          <Sparkles className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h1 className="text-2xl font-light mb-2">Dear {guest.name}</h1>
-          <p className="text-gray-500 mb-4">Thank you for your interest!</p>
-          <p className="text-gray-600">Event details will be announced soon.</p>
-          <p className="text-sm text-gray-400 mt-6">Your invitation code: {code.toUpperCase()}</p>
-        </div>
-      </div>
-    )
-  }
-
+  // Main invitation interface - replicating home page style
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white text-black overflow-hidden">
       <Toaster position="top-center" />
       
       {showConfetti && (
@@ -224,64 +316,207 @@ export default function PersonalInvitationPage() {
           recycle={false}
           numberOfPieces={200}
           gravity={0.1}
+          colors={['#000000', '#666666', '#999999', '#CCCCCC']}
         />
       )}
 
-      {/* Header with Logo */}
-      <div className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm z-40 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <Image
-            src="/logo.png"
-            alt="Second Story"
-            width={150}
-            height={40}
-            className="h-8 w-auto"
-          />
+      {/* Hero Section - Identical to home page */}
+      <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-gray-50">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 1px, transparent 15px)`,
+          }} />
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="pt-24 pb-12 px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="max-w-2xl mx-auto"
-        >
-          {/* Personal Greeting */}
-          <div className="text-center mb-12">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring" }}
-              className="inline-flex items-center justify-center w-20 h-20 bg-black text-white rounded-full mb-6"
-            >
-              <User className="w-10 h-10" />
-            </motion.div>
-            
-            <h1 className="text-4xl font-light mb-4">
-              Dear {guest.name}
-            </h1>
-            <p className="text-gray-600 text-lg">
-              You're exclusively invited to
-            </p>
-          </div>
-
-          {/* Event Card */}
+        
+        {/* Content */}
+        <div className="relative z-20 text-center px-4 sm:px-6 max-w-4xl mx-auto">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="border border-gray-200 p-8 mb-8"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
           >
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-light mb-2">{event.name}</h2>
-              {event.description && (
-                <p className="text-gray-600 italic">{event.description}</p>
+            {!hasConfirmed ? (
+              // Pre-confirmation view
+              <>
+                <p className="text-gray-600 text-sm tracking-[0.3em] uppercase mb-6">
+                  Chapter I
+                </p>
+                <div className="mb-6">
+                  <Image 
+                    src="/logo.png" 
+                    alt="Second Story" 
+                    width={400} 
+                    height={120} 
+                    className="mx-auto"
+                    priority
+                  />
+                </div>
+                <p className="text-xl sm:text-2xl font-light italic mb-8 text-gray-600">
+                  Where luxury finds its next chapter
+                </p>
+                
+                {/* Personal greeting */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                  className="mb-12"
+                >
+                  <h1 className="text-3xl sm:text-4xl font-light mb-4">
+                    Dear {guest.name.split(' ')[0]},
+                  </h1>
+                  <p className="text-lg text-gray-600">
+                    You're exclusively invited
+                  </p>
+                </motion.div>
+                
+                {/* CTA Button */}
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  whileHover={{ y: -2, scale: 1.02 }}
+                  whileTap={{ y: 0, scale: 0.98 }}
+                  onClick={confirmAttendance}
+                  disabled={isConfirming}
+                  className="btn-luxury animate-pulse-subtle px-12 py-4 flex items-center justify-center gap-3 mx-auto mb-12"
+                >
+                  {isConfirming ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <span>Confirm Your Place</span>
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </motion.button>
+              </>
+            ) : (
+              // Post-confirmation thank you view
+              <>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200 }}
+                  className="mb-6"
+                >
+                  <CheckCircle className="w-20 h-20 mx-auto text-black mb-4" />
+                </motion.div>
+                
+                <p className="text-gray-600 text-sm tracking-[0.3em] uppercase mb-4">
+                  Chapter I
+                </p>
+                
+                <h1 className="text-4xl sm:text-5xl font-light mb-4">
+                  You're confirmed, {guest.name.split(' ')[0]}!
+                </h1>
+                
+                <p className="text-xl text-gray-600 mb-2">
+                  Spot #{registrationCount} of {event.max_capacity}
+                </p>
+                
+                {/* Countdown */}
+                <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-8 mb-8 mt-8">
+                  <p className="text-xs tracking-[0.3em] uppercase text-gray-600 mb-6">
+                    Countdown to Show
+                  </p>
+                  <div className="grid grid-cols-4 gap-4">
+                    {[
+                      { value: countdown.days, label: 'Days' },
+                      { value: countdown.hours, label: 'Hours' },
+                      { value: countdown.minutes, label: 'Minutes' },
+                      { value: countdown.seconds, label: 'Seconds' }
+                    ].map((item, index) => (
+                      <motion.div
+                        key={item.label}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="text-center"
+                      >
+                        <motion.div
+                          key={`${item.label}-${item.value}`}
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className="text-3xl sm:text-4xl font-light mb-1"
+                        >
+                          {String(item.value).padStart(2, '0')}
+                        </motion.div>
+                        <p className="text-xs tracking-widest uppercase text-gray-500">
+                          {item.label}
+                        </p>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Calendar link */}
+                <button
+                  onClick={addToCalendar}
+                  className="text-sm text-gray-600 hover:text-black transition-colors mb-6"
+                >
+                  📅 Add to calendar
+                </button>
+              </>
+            )}
+            
+            {/* Live Stats */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: hasConfirmed ? 0.8 : 0.6 }}
+              className="space-y-4"
+            >
+              {/* Registration count */}
+              <div className="text-center">
+                <motion.p
+                  key={registrationCount}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-sm text-gray-600"
+                >
+                  <span className="text-black font-medium text-lg">{registrationCount}</span>
+                  <span className="text-gray-600"> of {event.max_capacity} spots taken</span>
+                </motion.p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {event.max_capacity - registrationCount} spots remaining
+                </p>
+              </div>
+              
+              {/* Recent confirmations */}
+              {recentConfirmations.length > 0 && (
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentConfirmationIndex}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.5 }}
+                    className="flex items-center justify-center gap-2 text-sm text-gray-600"
+                  >
+                    <Sparkles className="w-4 h-4 text-black opacity-60" />
+                    <span className="text-gray-700">
+                      {recentConfirmations[currentConfirmationIndex]?.name} secured their place
+                    </span>
+                  </motion.div>
+                </AnimatePresence>
               )}
-            </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
 
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
+      {/* Event Details - Only show if not confirmed */}
+      {!hasConfirmed && (
+        <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white border-t border-gray-100">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-2xl mx-auto"
+          >
+            <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
@@ -297,16 +532,17 @@ export default function PersonalInvitationPage() {
                     </p>
                   </div>
                 </div>
-
+                
                 <div className="flex items-start gap-3">
                   <Clock className="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
                     <p className="font-medium">Time</p>
                     <p className="text-gray-600">{event.time}</p>
+                    <p className="text-sm text-gray-500">Doors open 30 minutes prior</p>
                   </div>
                 </div>
               </div>
-
+              
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
@@ -316,7 +552,7 @@ export default function PersonalInvitationPage() {
                     <p className="text-gray-500 text-sm">{event.address}</p>
                   </div>
                 </div>
-
+                
                 {event.dress_code && (
                   <div className="flex items-start gap-3">
                     <Sparkles className="w-5 h-5 text-gray-400 mt-0.5" />
@@ -328,104 +564,9 @@ export default function PersonalInvitationPage() {
                 )}
               </div>
             </div>
-
-            {/* Event Countdown */}
-            {timeLeft.days > 0 && (
-              <div className="border-t border-gray-200 pt-6">
-                <div className="flex justify-center gap-8">
-                  <div className="text-center">
-                    <p className="text-3xl font-light">{timeLeft.days}</p>
-                    <p className="text-sm text-gray-500">Days</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-3xl font-light">{timeLeft.hours}</p>
-                    <p className="text-sm text-gray-500">Hours</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-3xl font-light">{timeLeft.minutes}</p>
-                    <p className="text-sm text-gray-500">Minutes</p>
-                  </div>
-                </div>
-              </div>
-            )}
           </motion.div>
-
-          {/* RSVP Section */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="text-center"
-          >
-            {hasConfirmed ? (
-              <div className="space-y-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 text-green-600 rounded-full mb-4">
-                  <CheckCircle className="w-8 h-8" />
-                </div>
-                <h3 className="text-2xl font-light">You're All Set!</h3>
-                <p className="text-gray-600">
-                  Your attendance has been confirmed. We can't wait to see you there.
-                </p>
-                {guest.vip_level === 'vip' && (
-                  <div className="mt-6 inline-flex items-center gap-2 bg-black text-white px-6 py-3">
-                    <Sparkles className="w-5 h-5" />
-                    <span>VIP Access Granted</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <p className="text-gray-600">
-                  Limited to {event.max_capacity} guests • {spotsLeft} spots remaining
-                </p>
-                <button
-                  onClick={confirmAttendance}
-                  disabled={isConfirming || spotsLeft <= 0}
-                  className={`
-                    inline-flex items-center gap-3 px-12 py-4 text-lg
-                    transition-all duration-300 transform hover:scale-105
-                    ${spotsLeft <= 0 
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                      : 'bg-black text-white hover:bg-gray-900'
-                    }
-                  `}
-                >
-                  {isConfirming ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Confirming...</span>
-                    </>
-                  ) : spotsLeft <= 0 ? (
-                    <span>Event Full</span>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-5 h-5" />
-                      <span>Yes, I'll Be There</span>
-                    </>
-                  )}
-                </button>
-                
-                <div className="mt-4">
-                  <button
-                    onClick={() => router.push('/')}
-                    className="text-gray-500 underline hover:no-underline text-sm"
-                  >
-                    Cannot attend
-                  </button>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </motion.div>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-gray-200 py-8 px-6">
-        <div className="max-w-2xl mx-auto text-center text-sm text-gray-500">
-          <p>Questions? Contact us at hello@secondstory.com</p>
-          <p className="mt-2">Your invitation code: {code.toUpperCase()}</p>
-        </div>
-      </div>
+        </section>
+      )}
     </div>
   )
 }

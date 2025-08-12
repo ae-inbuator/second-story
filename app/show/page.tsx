@@ -23,6 +23,7 @@ export default function ShowPage() {
   const [wishCounts, setWishCounts] = useState<Record<string, number>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [isPageLoading, setIsPageLoading] = useState(true)
+  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false)
   const [showWishlist, setShowWishlist] = useState(false)
   
   // Use enhanced hooks
@@ -40,15 +41,70 @@ export default function ShowPage() {
   useEffect(() => {
     const init = async () => {
       setIsPageLoading(true)
-      // Check if already logged in from localStorage
-      const storedGuest = localStorage.getItem(config.storage.guestId)
-      if (storedGuest) {
-        const guest = JSON.parse(storedGuest)
-        setGuestName(guest.name)
-        setGuestId(guest.id)
-        setIsLoggedIn(true)
-        await fetchCurrentLook()
+      
+      // Check for auto-login from invitation
+      const urlParams = new URLSearchParams(window.location.search)
+      const guestParam = urlParams.get('guest')
+      const sessionParam = urlParams.get('session')
+      
+      if (guestParam && sessionParam && !autoLoginAttempted) {
+        setAutoLoginAttempted(true)
+        
+        try {
+          // Verify guest and session
+          const { data: guestData } = await supabase
+            .from('guests')
+            .select('*')
+            .eq('id', guestParam)
+            .eq('active_session_id', sessionParam)
+            .single()
+          
+          if (guestData && guestData.confirmed_at) {
+            // Update last activity
+            await supabase
+              .from('guests')
+              .update({ 
+                last_activity_at: new Date().toISOString(),
+                checked_in_at: new Date().toISOString()
+              })
+              .eq('id', guestData.id)
+            
+            setGuestId(guestData.id)
+            setGuestName(guestData.name)
+            setIsLoggedIn(true)
+            
+            // Join socket room
+            emit('guest:join', { guestId: guestData.id })
+            
+            await fetchCurrentLook()
+            
+            toast.success(`Welcome back, ${guestData.name.split(' ')[0]}!`, {
+              icon: '✨',
+              duration: 3000,
+              style: {
+                background: '#000',
+                color: '#fff',
+              }
+            })
+            
+            // Clean URL
+            window.history.replaceState({}, '', '/show')
+          }
+        } catch (error) {
+          console.error('Auto-login failed:', error)
+        }
+      } else {
+        // Check if already logged in from localStorage
+        const storedGuest = localStorage.getItem(config.storage.guestId)
+        if (storedGuest) {
+          const guest = JSON.parse(storedGuest)
+          setGuestName(guest.name)
+          setGuestId(guest.id)
+          setIsLoggedIn(true)
+          await fetchCurrentLook()
+        }
       }
+      
       setIsPageLoading(false)
     }
     init()

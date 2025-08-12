@@ -269,6 +269,29 @@
     }
   }
 
+  /* Pulse animation for CTA buttons */
+  @keyframes pulse-subtle {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.7);
+    }
+    50% {
+      box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+    }
+  }
+
+  /* Number flip animation for countdown */
+  @keyframes flip-number {
+    0% {
+      transform: perspective(400px) rotateX(0deg);
+    }
+    50% {
+      transform: perspective(400px) rotateX(90deg);
+    }
+    100% {
+      transform: perspective(400px) rotateX(0deg);
+    }
+  }
+
   .animate-fadeIn {
     animation: fadeIn var(--motion-normal) var(--ease-luxury);
   }
@@ -283,6 +306,14 @@
 
   .animate-scaleIn {
     animation: scaleIn var(--motion-fast) var(--ease-spring);
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s infinite;
+  }
+
+  .animate-flip-number {
+    animation: flip-number 0.6s ease-in-out;
   }
 
   /* Shimmer effect for loading - Refined */

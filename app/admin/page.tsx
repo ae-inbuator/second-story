@@ -83,6 +83,18 @@ export default function AdminPage() {
   useEffect(() => {
     const init = async () => {
       setIsLoading(true)
+      
+      // Fetch current show status from database
+      const { data: event } = await supabase
+        .from('events')
+        .select('show_status')
+        .eq('status', 'upcoming')
+        .single()
+      
+      if (event?.show_status) {
+        setShowStatus(event.show_status as any)
+      }
+      
       await Promise.all([
         fetchLooks(),
         fetchStats()
@@ -329,16 +341,34 @@ export default function AdminPage() {
   }, [announcement, announcementDuration, emit])
 
   // Control show status
-  const toggleShowStatus = useCallback(() => {
+  const toggleShowStatus = useCallback(async () => {
     const newStatus = showStatus === 'live' ? 'paused' : 'live'
-    setShowStatus(newStatus)
     
-    emit('show:status', { status: newStatus })
-    
-    toast.success(
-      newStatus === 'live' ? 'Show is live!' : 'Show paused',
-      { icon: newStatus === 'live' ? '🎬' : '⏸️' }
-    )
+    try {
+      // Update show status in database
+      const { error } = await supabase
+        .from('events')
+        .update({ 
+          show_status: newStatus,
+          show_starts_at: newStatus === 'live' ? new Date().toISOString() : null
+        })
+        .eq('status', 'upcoming')
+      
+      if (error) throw error
+      
+      setShowStatus(newStatus)
+      
+      // Emit status change via socket for real-time updates
+      emit('show:status', { status: newStatus })
+      
+      toast.success(
+        newStatus === 'live' ? 'Show is now LIVE! Guests can enter.' : 'Show paused',
+        { icon: newStatus === 'live' ? '🎬' : '⏸️' }
+      )
+    } catch (error) {
+      console.error('Failed to update show status:', error)
+      toast.error('Failed to update show status')
+    }
   }, [showStatus, emit])
 
   if (isLoading) {
