@@ -342,7 +342,18 @@ export default function AdminPage() {
 
   // Control show status
   const toggleShowStatus = useCallback(async () => {
-    const newStatus = showStatus === 'live' ? 'paused' : 'live'
+    let newStatus: string
+    
+    // Determine next status based on current
+    if (showStatus === 'preparing') {
+      newStatus = 'live'
+    } else if (showStatus === 'live') {
+      newStatus = 'paused'
+    } else if (showStatus === 'paused') {
+      newStatus = 'live'
+    } else {
+      newStatus = 'preparing'
+    }
     
     try {
       // Update show status in database
@@ -356,15 +367,20 @@ export default function AdminPage() {
       
       if (error) throw error
       
-      setShowStatus(newStatus)
+      setShowStatus(newStatus as any)
       
       // Emit status change via socket for real-time updates
       emit('show:status', { status: newStatus })
       
-      toast.success(
-        newStatus === 'live' ? 'Show is now LIVE! Guests can enter.' : 'Show paused',
-        { icon: newStatus === 'live' ? '🎬' : '⏸️' }
-      )
+      const messages = {
+        'live': 'Show is now LIVE! Guests can enter.',
+        'paused': 'Show paused. Guests see waiting screen.',
+        'preparing': 'Show in preparation mode.'
+      }
+      
+      toast.success(messages[newStatus as keyof typeof messages], { 
+        icon: newStatus === 'live' ? '🎬' : newStatus === 'paused' ? '⏸️' : '🎯' 
+      })
     } catch (error) {
       console.error('Failed to update show status:', error)
       toast.error('Failed to update show status')
@@ -484,6 +500,8 @@ export default function AdminPage() {
                           "flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200",
                           showStatus === 'live'
                             ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                            : showStatus === 'paused'
+                            ? "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
                             : "bg-green-500/20 text-green-400 hover:bg-green-500/30"
                         )}
                       >
@@ -491,6 +509,11 @@ export default function AdminPage() {
                           <>
                             <Pause className="w-4 h-4" />
                             <span>Pause Show</span>
+                          </>
+                        ) : showStatus === 'paused' ? (
+                          <>
+                            <Play className="w-4 h-4" />
+                            <span>Resume Show</span>
                           </>
                         ) : (
                           <>
@@ -589,6 +612,64 @@ export default function AdminPage() {
                   <p className="text-sm text-gray-600 mt-2">Upload looks to get started</p>
                 </div>
               )}
+
+              {/* Event Timer Control */}
+              <div className="bg-gray-950 border border-gray-900 rounded-lg p-6">
+                <h3 className="text-lg font-medium tracking-wide mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-luxury-gold" />
+                  Event Timer Control
+                </h3>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">
+                        Date
+                      </label>
+                      <input
+                        type="date"
+                        id="countdown-date"
+                        className="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:border-luxury-gold focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs tracking-widest uppercase text-gray-500 mb-2">
+                        Time
+                      </label>
+                      <input
+                        type="time"
+                        id="countdown-time"
+                        className="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:border-luxury-gold focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const dateInput = document.getElementById('countdown-date') as HTMLInputElement
+                      const timeInput = document.getElementById('countdown-time') as HTMLInputElement
+                      
+                      if (dateInput?.value && timeInput?.value) {
+                        const countdownTarget = new Date(`${dateInput.value}T${timeInput.value}`)
+                        
+                        const { error } = await supabase
+                          .from('events')
+                          .update({ countdown_target: countdownTarget.toISOString() })
+                          .eq('status', 'upcoming')
+                        
+                        if (!error) {
+                          toast.success('Countdown target updated!', { icon: '⏰' })
+                        } else {
+                          toast.error('Failed to update countdown')
+                        }
+                      } else {
+                        toast.error('Please select both date and time')
+                      }
+                    }}
+                    className="w-full px-4 py-2 bg-luxury-gold text-black font-medium rounded hover:bg-luxury-gold/80 transition-colors"
+                  >
+                    Set Countdown Target
+                  </button>
+                </div>
+              </div>
 
               {/* Announcement Panel */}
               <div className="bg-gray-950 border border-gray-900 rounded-lg p-6">

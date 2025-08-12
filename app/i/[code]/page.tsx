@@ -45,6 +45,7 @@ interface EventData {
   show_status?: string
   doors_open_at?: string
   show_starts_at?: string
+  countdown_target?: string
 }
 
 interface RecentConfirmation {
@@ -69,10 +70,18 @@ export default function PersonalInvitationPage() {
   const [currentConfirmationIndex, setCurrentConfirmationIndex] = useState(0)
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [sessionId] = useState(() => crypto.randomUUID())
+  const [showState, setShowState] = useState<'preparing' | 'live' | 'paused' | 'ended'>('preparing')
 
   // Fetch invitation data
   useEffect(() => {
     fetchInvitationData()
+    
+    // Poll for show status changes every 5 seconds
+    const pollInterval = setInterval(() => {
+      checkShowStatus()
+    }, 5000)
+    
+    return () => clearInterval(pollInterval)
   }, [code])
 
   // Animate counter
@@ -106,9 +115,13 @@ export default function PersonalInvitationPage() {
     if (!event) return
     
     const timer = setInterval(() => {
-      const eventDate = new Date(event.date + 'T' + event.time)
+      // Use countdown_target if available, otherwise use event date/time
+      const targetDate = event.countdown_target 
+        ? new Date(event.countdown_target)
+        : new Date(event.date + 'T' + event.time)
+      
       const now = new Date()
-      const diff = eventDate.getTime() - now.getTime()
+      const diff = targetDate.getTime() - now.getTime()
       
       if (diff > 0) {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -123,6 +136,29 @@ export default function PersonalInvitationPage() {
     
     return () => clearInterval(timer)
   }, [event])
+
+  async function checkShowStatus() {
+    if (!guest || !event) return
+    
+    try {
+      const { data: eventData } = await supabase
+        .from('events')
+        .select('show_status')
+        .eq('id', event.id)
+        .single()
+      
+      if (eventData && eventData.show_status !== showState) {
+        setShowState(eventData.show_status as any)
+        
+        // If show is live and guest is confirmed, redirect
+        if (eventData.show_status === 'live' && hasConfirmed) {
+          router.push(`/show?guest=${guest.id}&session=${sessionId}`)
+        }
+      }
+    } catch (error) {
+      console.error('Error checking show status:', error)
+    }
+  }
 
   async function fetchInvitationData() {
     if (!code) return
@@ -156,6 +192,7 @@ export default function PersonalInvitationPage() {
       
       if (eventData) {
         setEvent(eventData)
+        setShowState(eventData.show_status || 'preparing')
         
         // Check if event is live and guest is confirmed
         if (eventData.show_status === 'live' && guestData.confirmed_at) {
@@ -183,10 +220,27 @@ export default function PersonalInvitationPage() {
           .limit(5)
         
         if (recent) {
-          setRecentConfirmations(recent.map(r => ({
-            name: r.name.split(' ')[0] + ' ' + r.name.split(' ')[1]?.charAt(0) + '.',
-            confirmed_at: r.confirmed_at
-          })))
+          setRecentConfirmations(recent.map(r => {
+            const nameParts = r.name.trim().split(' ')
+            let displayName = ''
+            
+            if (nameParts.length === 1) {
+              // Solo un nombre
+              displayName = nameParts[0]
+            } else if (nameParts.length === 2) {
+              // Nombre y apellido o dos nombres
+              // Si el segundo parece un apellido (empieza con mayúscula), usar inicial
+              displayName = nameParts[0] + ' ' + nameParts[1].charAt(0) + '.'
+            } else {
+              // Tres o más partes, tomar primer nombre e inicial del último
+              displayName = nameParts[0] + ' ' + nameParts[nameParts.length - 1].charAt(0) + '.'
+            }
+            
+            return {
+              name: displayName,
+              confirmed_at: r.confirmed_at
+            }
+          }))
         }
       }
     } catch (error) {
@@ -304,6 +358,72 @@ END:VCALENDAR`
     )
   }
 
+  // Show paused state
+  if (showState === 'paused' && hasConfirmed) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center px-6">
+          <Image 
+            src="/logo.png" 
+            alt="Second Story" 
+            width={300} 
+            height={90} 
+            className="mx-auto mb-8"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            <Clock className="w-16 h-16 mx-auto text-gray-400 animate-pulse" />
+            <h1 className="text-3xl font-light">The show will begin shortly</h1>
+            <p className="text-gray-600">Please stay on this page</p>
+            <p className="text-sm text-gray-400">We'll automatically redirect you when ready</p>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show ended state
+  if (showState === 'ended') {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center px-6 max-w-2xl mx-auto">
+          <Image 
+            src="/logo.png" 
+            alt="Second Story" 
+            width={300} 
+            height={90} 
+            className="mx-auto mb-8"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <Sparkles className="w-16 h-16 mx-auto text-black" />
+            <h1 className="text-4xl font-light">Thank you for experiencing Second Story</h1>
+            <div className="border-t border-b border-gray-200 py-6 my-8">
+              <p className="text-lg text-gray-700 mb-4">
+                Your wishlisted items are reserved in order of selection
+              </p>
+              <p className="text-sm text-gray-600">
+                Guests #1-10 have priority access for the next 24 hours
+              </p>
+            </div>
+            <p className="text-gray-600">
+              Contact your personal shopper to secure your pieces
+            </p>
+            <a href="mailto:shop@secondstory.com" className="inline-block mt-4 text-black underline">
+              shop@secondstory.com
+            </a>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
   // Main invitation interface - replicating home page style
   return (
     <div className="min-h-screen bg-white text-black overflow-hidden">
@@ -413,7 +533,10 @@ END:VCALENDAR`
                 </h1>
                 
                 <p className="text-xl text-gray-600 mb-2">
-                  Spot #{registrationCount} of {event.max_capacity}
+                  You're spot #{registrationCount}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Welcome to an exclusive group of {event.max_capacity}
                 </p>
                 
                 {/* Countdown */}
@@ -461,48 +584,50 @@ END:VCALENDAR`
               </>
             )}
             
-            {/* Live Stats */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: hasConfirmed ? 0.8 : 0.6 }}
-              className="space-y-4"
-            >
-              {/* Registration count */}
-              <div className="text-center">
-                <motion.p
-                  key={registrationCount}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-sm text-gray-600"
-                >
-                  <span className="text-black font-medium text-lg">{registrationCount}</span>
-                  <span className="text-gray-600"> of {event.max_capacity} spots taken</span>
-                </motion.p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {event.max_capacity - registrationCount} spots remaining
-                </p>
-              </div>
-              
-              {/* Recent confirmations */}
-              {recentConfirmations.length > 0 && (
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentConfirmationIndex}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.5 }}
-                    className="flex items-center justify-center gap-2 text-sm text-gray-600"
+            {/* Live Stats - Only show before confirmation */}
+            {!hasConfirmed && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="space-y-4"
+              >
+                {/* Registration count */}
+                <div className="text-center">
+                  <motion.p
+                    key={registrationCount}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-sm text-gray-600"
                   >
-                    <Sparkles className="w-4 h-4 text-black opacity-60" />
-                    <span className="text-gray-700">
-                      {recentConfirmations[currentConfirmationIndex]?.name} secured their place
-                    </span>
-                  </motion.div>
-                </AnimatePresence>
-              )}
-            </motion.div>
+                    <span className="text-black font-medium text-lg">{registrationCount}</span>
+                    <span className="text-gray-600"> of {event.max_capacity} spots taken</span>
+                  </motion.p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {event.max_capacity - registrationCount} spots remaining
+                  </p>
+                </div>
+                
+                {/* Recent confirmations */}
+                {recentConfirmations.length > 0 && (
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentConfirmationIndex}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.5 }}
+                      className="flex items-center justify-center gap-2 text-sm text-gray-600"
+                    >
+                      <Sparkles className="w-4 h-4 text-black opacity-60" />
+                      <span className="text-gray-700">
+                        {recentConfirmations[currentConfirmationIndex]?.name} secured their place
+                      </span>
+                    </motion.div>
+                  </AnimatePresence>
+                )}
+              </motion.div>
+            )}
           </motion.div>
         </div>
       </section>
