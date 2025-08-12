@@ -20,6 +20,7 @@ import {
 import toast, { Toaster } from 'react-hot-toast'
 import config from '@/lib/config'
 import { useWebSocket } from '@/hooks/useWebSocket'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 interface GuestData {
   id: string
@@ -54,7 +55,7 @@ interface RecentConfirmation {
   confirmed_at: string
 }
 
-export default function PersonalInvitationPage() {
+function PersonalInvitationPageContent() {
   const params = useParams()
   const router = useRouter()
   const code = params.code as string
@@ -76,32 +77,42 @@ export default function PersonalInvitationPage() {
   const [breakMinutes, setBreakMinutes] = useState(0)
   const [breakSeconds, setBreakSeconds] = useState(0)
   
-  // WebSocket connection
-  const { on, off, emit } = useWebSocket()
+  // WebSocket connection with proper URL
+  const socketUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://second-story.onrender.com'
+    : 'http://localhost:3001'
+  const { on, off, emit, isConnected, socket } = useWebSocket(socketUrl)
 
   // Fetch invitation data
   useEffect(() => {
     fetchInvitationData()
     
-    // Poll for show status changes every 5 seconds
+    // Poll for show status changes every 10 seconds as backup
     const pollInterval = setInterval(() => {
       checkShowStatus()
-    }, 5000)
+    }, 10000)
     
     return () => clearInterval(pollInterval)
   }, [code])
 
   // Listen for WebSocket events
   useEffect(() => {
-    if (!on || !off) return
+    if (!socket || !isConnected) {
+      console.log('WebSocket not connected yet, waiting...', { socket: !!socket, isConnected })
+      return
+    }
+    
+    console.log('Setting up WebSocket listeners')
     
     const handleTimerUpdate = (data: any) => {
+      console.log('Timer update received:', data)
       if (event && data.countdown_target) {
         setEvent(prev => prev ? { ...prev, countdown_target: data.countdown_target } : prev)
       }
     }
     
     const handleStatusUpdate = (data: any) => {
+      console.log('Status update received:', data)
       if (data.status) {
         setShowState(data.status)
         
@@ -111,18 +122,28 @@ export default function PersonalInvitationPage() {
           endTime.setMinutes(endTime.getMinutes() + data.breakDuration)
           setBreakEndTime(endTime)
         }
+        
+        // Clear break timer when going to other states
+        if (data.status !== 'paused') {
+          setBreakEndTime(null)
+        }
       }
     }
     
     // Set up event listeners
-    on('timer:updated', handleTimerUpdate)
-    on('show:status', handleStatusUpdate)
+    const unsubTimer = on('timer:updated', handleTimerUpdate)
+    const unsubStatus = on('show:status', handleStatusUpdate)
+    
+    // Emit join event
+    if (guest) {
+      emit('guest:join', { guestId: guest.id })
+    }
     
     return () => {
       off('timer:updated', handleTimerUpdate)
       off('show:status', handleStatusUpdate)
     }
-  }, [event, on, off])
+  }, [socket, isConnected, event, guest, on, off, emit])
 
   // Break timer countdown
   useEffect(() => {
@@ -492,10 +513,15 @@ END:VCALENDAR`
         
         {/* Embedded show */}
         <iframe 
-          src={`/show?guest=${guest?.id}&session=${sessionId}`}
+          src={`/show?guest=${guest?.id}&session=${sessionId}&embedded=true`}
           className="w-full h-screen pt-14"
           style={{ border: 'none' }}
           allow="fullscreen"
+          title="Second Story Show"
+          onError={(e) => {
+            console.error('Iframe error:', e)
+            toast.error('Error loading show. Please refresh.')
+          }}
         />
       </div>
     )
@@ -869,5 +895,13 @@ END:VCALENDAR`
         </section>
       )}
     </div>
+  )
+}
+
+export default function PersonalInvitationPage() {
+  return (
+    <ErrorBoundary>
+      <PersonalInvitationPageContent />
+    </ErrorBoundary>
   )
 }

@@ -12,6 +12,8 @@ import { LuxuryImage } from '@/components/ui/luxury-image'
 import config from '@/lib/config'
 
 export default function ShowPage() {
+  // Check if we're embedded to prevent infinite loops
+  const [isEmbedded, setIsEmbedded] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [guestName, setGuestName] = useState('')
   const [guestId, setGuestId] = useState('')
@@ -26,8 +28,13 @@ export default function ShowPage() {
   const [autoLoginAttempted, setAutoLoginAttempted] = useState(false)
   const [showWishlist, setShowWishlist] = useState(false)
   
-  // Use enhanced hooks
-  const { socket, isConnected, isReconnecting, emit, on, off } = useWebSocket()
+  // Use enhanced hooks with proper URL
+  const socketUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://second-story.onrender.com'
+    : 'http://localhost:3001'
+  const { socket, isConnected, isReconnecting, emit, on, off } = useWebSocket(socketUrl, {
+    showToasts: !isEmbedded // Don't show toasts when embedded
+  })
   const { 
     wishlist, 
     addToWishlist, 
@@ -46,6 +53,13 @@ export default function ShowPage() {
       const urlParams = new URLSearchParams(window.location.search)
       const guestParam = urlParams.get('guest')
       const sessionParam = urlParams.get('session')
+      const embeddedParam = urlParams.get('embedded')
+      
+      // Set embedded state to prevent issues
+      if (embeddedParam === 'true') {
+        setIsEmbedded(true)
+        console.log('Running in embedded mode')
+      }
       
       if (guestParam && sessionParam && !autoLoginAttempted) {
         setAutoLoginAttempted(true)
@@ -373,6 +387,15 @@ export default function ShowPage() {
         <div className="pt-20">
           <LookSkeleton />
         </div>
+      </div>
+    )
+  }
+  
+  // Prevent rendering complex UI if embedded to avoid crashes
+  if (isEmbedded && !isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <p>Please access the show through your invitation link</p>
       </div>
     )
   }
