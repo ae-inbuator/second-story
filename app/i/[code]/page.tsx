@@ -271,6 +271,12 @@ function PersonalInvitationPageContent() {
       setGuest(guestData)
       setHasConfirmed(!!guestData.confirmed_at)
       
+      // If already confirmed, redirect to show
+      if (guestData.confirmed_at) {
+        router.push(`/show?code=${code.toUpperCase()}`)
+        return
+      }
+      
       // Get event data
       const { data: eventData } = await supabase
         .from('events')
@@ -380,6 +386,11 @@ function PersonalInvitationPageContent() {
       
       // Hide confetti after 5 seconds
       setTimeout(() => setShowConfetti(false), 5000)
+      
+      // Redirect to show after 2 seconds to see confetti
+      setTimeout(() => {
+        router.push(`/show?code=${code.toUpperCase()}`)
+      }, 2000)
     } catch (error) {
       console.error('Error:', error)
       toast.error('Failed to confirm attendance')
@@ -449,182 +460,6 @@ END:VCALENDAR`
     )
   }
 
-  // Show doors open state - Cocktail hour (NO timer)
-  if (showState === 'doors_open' && hasConfirmed) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center px-6 max-w-2xl mx-auto">
-          <Image 
-            src="/logo.png" 
-            alt="Second Story" 
-            width={300} 
-            height={90} 
-            className="mx-auto mb-8"
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            <div className="text-6xl mb-4">🥂</div>
-            <h1 className="text-4xl sm:text-5xl font-light">Welcome to Second Story</h1>
-            <p className="text-xl text-gray-600 mb-2">Dear {guest?.name.split(' ')[0]},</p>
-            
-            <div className="border-t border-b border-gray-200 py-6 my-8">
-              <p className="text-lg text-gray-700 mb-2">The cocktail hour has begun</p>
-              <p className="text-gray-600 italic">Mingle, explore, and prepare for an extraordinary show</p>
-            </div>
-            
-            <motion.div
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="text-sm text-gray-500"
-            >
-              The show will begin shortly
-            </motion.div>
-          </motion.div>
-        </div>
-      </div>
-    )
-  }
-
-  // Show LIVE state - Embedded show experience
-  if (showState === 'live' && hasConfirmed) {
-    return (
-      <div className="min-h-screen bg-black">
-        {/* Minimal header */}
-        <div className="fixed top-0 left-0 right-0 bg-black/90 backdrop-blur-sm z-50 px-4 py-3 border-b border-gray-800">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <Image 
-              src="/logo-white.png" 
-              alt="Second Story" 
-              width={120} 
-              height={36}
-              className="brightness-0 invert"
-            />
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-white text-xs tracking-widest uppercase">Live</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Embedded show */}
-        <iframe 
-          src={`/show?guest=${guest?.id}&session=${sessionId}&embedded=true`}
-          className="w-full h-screen pt-14"
-          style={{ border: 'none' }}
-          allow="fullscreen"
-          title="Second Story Show"
-          onError={(e) => {
-            console.error('Iframe error:', e)
-            toast.error('Error loading show. Please refresh.')
-          }}
-        />
-      </div>
-    )
-  }
-
-  // Show INTERMISSION state - Break timer
-  if (showState === 'paused' && hasConfirmed) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center px-6 max-w-2xl mx-auto">
-          <Image 
-            src="/logo.png" 
-            alt="Second Story" 
-            width={300} 
-            height={90} 
-            className="mx-auto mb-8"
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            <div className="text-6xl mb-4">☕</div>
-            <h1 className="text-4xl sm:text-5xl font-light">Intermission</h1>
-            
-            <div className="border-t border-b border-gray-200 py-6 my-8">
-              <p className="text-lg text-gray-700 mb-4">Perfect time to refresh your champagne</p>
-              
-              {/* Break Timer */}
-              <div className="bg-gray-50 rounded-lg p-6">
-                <p className="text-xs tracking-[0.3em] uppercase text-gray-600 mb-4">
-                  Resuming in
-                </p>
-                <div className="flex justify-center gap-4">
-                  <div className="text-center">
-                    <div className="text-4xl font-light mb-1">
-                      {String(breakMinutes).padStart(2, '0')}
-                    </div>
-                    <p className="text-xs tracking-widest uppercase text-gray-500">
-                      Minutes
-                    </p>
-                  </div>
-                  <div className="text-4xl font-light">:</div>
-                  <div className="text-center">
-                    <div className="text-4xl font-light mb-1">
-                      {String(breakSeconds).padStart(2, '0')}
-                    </div>
-                    <p className="text-xs tracking-widest uppercase text-gray-500">
-                      Seconds
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <p className="text-sm text-gray-500">We'll resume the show shortly</p>
-          </motion.div>
-        </div>
-      </div>
-    )
-  }
-
-  // Show ended state
-  if (showState === 'ended') {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center px-6 max-w-2xl mx-auto">
-          <Image 
-            src="/logo.png" 
-            alt="Second Story" 
-            width={300} 
-            height={90} 
-            className="mx-auto mb-8"
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            <Sparkles className="w-16 h-16 mx-auto text-black" />
-            <h1 className="text-4xl font-light">Thank you for experiencing Second Story</h1>
-            <div className="border-t border-b border-gray-200 py-6 my-8">
-              <p className="text-lg text-gray-700 mb-4">
-                Your wishlisted items are reserved in order of selection
-              </p>
-              <p className="text-sm text-gray-600">
-                Guests #1-10 have priority access for the next 24 hours
-              </p>
-            </div>
-            <p className="text-gray-600 mb-2">
-              Contact your personal shopper to secure your pieces
-            </p>
-            <a href="mailto:shop@secondstory.com" className="inline-block text-black underline mb-4">
-              shop@secondstory.com
-            </a>
-            <p className="text-sm text-gray-500 italic">
-              Check your email for detailed purchase instructions
-            </p>
-          </motion.div>
-        </div>
-      </div>
-    )
-  }
 
   // Main invitation interface - replicating home page style
   return (

@@ -27,6 +27,12 @@ export default function ShowPage() {
   const [isPageLoading, setIsPageLoading] = useState(true)
   const [autoLoginAttempted, setAutoLoginAttempted] = useState(false)
   const [showWishlist, setShowWishlist] = useState(false)
+  const [showStatus, setShowStatus] = useState<'preparing' | 'doors_open' | 'live' | 'paused' | 'ended'>('preparing')
+  const [event, setEvent] = useState<any>(null)
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+  const [breakEndTime, setBreakEndTime] = useState<Date | null>(null)
+  const [breakMinutes, setBreakMinutes] = useState(0)
+  const [breakSeconds, setBreakSeconds] = useState(0)
   
   // Use enhanced hooks with proper URL
   const socketUrl = process.env.NODE_ENV === 'production' 
@@ -53,6 +59,7 @@ export default function ShowPage() {
       const urlParams = new URLSearchParams(window.location.search)
       const guestParam = urlParams.get('guest')
       const sessionParam = urlParams.get('session')
+      const codeParam = urlParams.get('code')
       const embeddedParam = urlParams.get('embedded')
       
       // Set embedded state to prevent issues
@@ -61,7 +68,54 @@ export default function ShowPage() {
         console.log('Running in embedded mode')
       }
       
-      if (guestParam && sessionParam && !autoLoginAttempted) {
+      // First try authentication by invitation code
+      if (codeParam && !autoLoginAttempted) {
+        setAutoLoginAttempted(true)
+        
+        try {
+          // Get guest by invitation code
+          const { data: guestData } = await supabase
+            .from('guests')
+            .select('*')
+            .eq('invitation_code', codeParam.toUpperCase())
+            .single()
+          
+          if (guestData && guestData.confirmed_at) {
+            // Update last activity
+            await supabase
+              .from('guests')
+              .update({ 
+                last_activity_at: new Date().toISOString(),
+                checked_in_at: guestData.checked_in_at || new Date().toISOString()
+              })
+              .eq('id', guestData.id)
+            
+            setGuestId(guestData.id)
+            setGuestName(guestData.name)
+            setIsLoggedIn(true)
+            
+            // Join socket room
+            emit('guest:join', { guestId: guestData.id })
+            
+            // Fetch event data and current look
+            await Promise.all([
+              fetchCurrentLook(),
+              fetchEventData()
+            ])
+            
+            toast.success(`Welcome, ${guestData.name.split(' ')[0]}!`, {
+              icon: '✨',
+              duration: 3000,
+              style: {
+                background: '#000',
+                color: '#fff',
+              }
+            })
+          }
+        } catch (error) {
+          console.error('Code-based login failed:', error)
+        }
+      } else if (guestParam && sessionParam && !autoLoginAttempted) {
         setAutoLoginAttempted(true)
         
         try {
@@ -89,7 +143,10 @@ export default function ShowPage() {
             // Join socket room
             emit('guest:join', { guestId: guestData.id })
             
-            await fetchCurrentLook()
+            await Promise.all([
+              fetchCurrentLook(),
+              fetchEventData()
+            ])
             
             toast.success(`Welcome back, ${guestData.name.split(' ')[0]}!`, {
               icon: '✨',
@@ -129,7 +186,10 @@ export default function ShowPage() {
               // Join socket room
               emit('guest:join', { guestId: guestData.id })
               
-              await fetchCurrentLook()
+              await Promise.all([
+                fetchCurrentLook(),
+                fetchEventData()
+              ])
             }
           } catch (error) {
             console.error('Session validation failed:', error)
@@ -143,7 +203,10 @@ export default function ShowPage() {
             setGuestName(guest.name)
             setGuestId(guest.id)
             setIsLoggedIn(true)
-            await fetchCurrentLook()
+            await Promise.all([
+              fetchCurrentLook(),
+              fetchEventData()
+            ])
           }
         }
       }
@@ -182,16 +245,85 @@ export default function ShowPage() {
       })
     }
 
+    const handleStatusUpdate = (data: any) => {
+      console.log('Show status update received:', data)
+      if (data.status) {
+        setShowStatus(data.status)
+        
+        // If intermission, set break timer
+        if (data.status === 'paused' && data.breakDuration) {
+          const endTime = new Date()
+          endTime.setMinutes(endTime.getMinutes() + data.breakDuration)
+          setBreakEndTime(endTime)
+        }
+        
+        // Clear break timer when going to other states
+        if (data.status !== 'paused') {
+          setBreakEndTime(null)
+        }
+      }
+    }
+
     on('look:changed', handleLookChanged)
     on('wishlist:updated', handleWishlistUpdated)
     on('announcement', handleAnnouncement)
+    on('show:status', handleStatusUpdate)
 
     return () => {
       off('look:changed', handleLookChanged)
       off('wishlist:updated', handleWishlistUpdated)
       off('announcement', handleAnnouncement)
+      off('show:status', handleStatusUpdate)
     }
   }, [socket, on, off])
+
+  // Countdown timer
+  useEffect(() => {
+    if (!event) return
+    
+    const timer = setInterval(() => {
+      const targetDate = event.countdown_target 
+        ? new Date(event.countdown_target)
+        : new Date(event.date + 'T' + event.time)
+      
+      const now = new Date()
+      const diff = targetDate.getTime() - now.getTime()
+      
+      if (diff > 0) {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+        setCountdown({ days, hours, minutes, seconds })
+      } else {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+      }
+    }, 1000)
+    
+    return () => clearInterval(timer)
+  }, [event])
+
+  // Break timer
+  useEffect(() => {
+    if (showStatus === 'paused' && breakEndTime) {
+      const timer = setInterval(() => {
+        const now = new Date()
+        const diff = breakEndTime.getTime() - now.getTime()
+        
+        if (diff > 0) {
+          const mins = Math.floor(diff / 60000)
+          const secs = Math.floor((diff % 60000) / 1000)
+          setBreakMinutes(mins)
+          setBreakSeconds(secs)
+        } else {
+          setBreakMinutes(0)
+          setBreakSeconds(0)
+        }
+      }, 1000)
+      
+      return () => clearInterval(timer)
+    }
+  }, [showStatus, breakEndTime])
 
   // Handle login with dual methods
   async function handleLogin(e: React.FormEvent) {
@@ -294,6 +426,24 @@ export default function ShowPage() {
       toast.error('Something went wrong. Please try again.')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // Fetch event data
+  async function fetchEventData() {
+    try {
+      const { data: eventData } = await supabase
+        .from('events')
+        .select('*')
+        .eq('status', 'upcoming')
+        .single()
+      
+      if (eventData) {
+        setEvent(eventData)
+        setShowStatus(eventData.show_status || 'preparing')
+      }
+    } catch (error) {
+      console.error('Failed to fetch event:', error)
     }
   }
 
@@ -511,10 +661,214 @@ export default function ShowPage() {
     )
   }
 
-  // Main show interface
-  return (
-    <div className="min-h-screen bg-white text-black">
-      <Toaster position="top-center" />
+  // Show different screens based on status
+  
+  // PREPARING - Show countdown
+  if (isLoggedIn && showStatus === 'preparing' && event) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Toaster position="top-center" />
+        <div className="text-center px-6 max-w-2xl mx-auto">
+          <Image 
+            src="/logo.png" 
+            alt="Second Story" 
+            width={300} 
+            height={90} 
+            className="mx-auto mb-8"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <h1 className="text-4xl sm:text-5xl font-light">Welcome, {guestName.split(' ')[0]}!</h1>
+            <p className="text-lg text-gray-600">The show will begin soon</p>
+            
+            <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg p-8">
+              <p className="text-xs tracking-[0.3em] uppercase text-gray-600 mb-6">
+                Countdown to Show
+              </p>
+              <div className="grid grid-cols-4 gap-4">
+                {[
+                  { value: countdown.days, label: 'Days' },
+                  { value: countdown.hours, label: 'Hours' },
+                  { value: countdown.minutes, label: 'Minutes' },
+                  { value: countdown.seconds, label: 'Seconds' }
+                ].map((item, index) => (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="text-center"
+                  >
+                    <motion.div
+                      key={`${item.label}-${item.value}`}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="text-3xl sm:text-4xl font-light mb-1"
+                    >
+                      {String(item.value).padStart(2, '0')}
+                    </motion.div>
+                    <p className="text-xs tracking-widest uppercase text-gray-500">
+                      {item.label}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  // DOORS OPEN - Cocktail hour
+  if (isLoggedIn && showStatus === 'doors_open') {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Toaster position="top-center" />
+        <div className="text-center px-6 max-w-2xl mx-auto">
+          <Image 
+            src="/logo.png" 
+            alt="Second Story" 
+            width={300} 
+            height={90} 
+            className="mx-auto mb-8"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <div className="text-6xl mb-4">🥂</div>
+            <h1 className="text-4xl sm:text-5xl font-light">Welcome to Second Story</h1>
+            <p className="text-xl text-gray-600 mb-2">Dear {guestName.split(' ')[0]},</p>
+            
+            <div className="border-t border-b border-gray-200 py-6 my-8">
+              <p className="text-lg text-gray-700 mb-2">The cocktail hour has begun</p>
+              <p className="text-gray-600 italic">Mingle, explore, and prepare for an extraordinary show</p>
+            </div>
+            
+            <motion.div
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-sm text-gray-500"
+            >
+              The show will begin shortly
+            </motion.div>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  // PAUSED - Intermission
+  if (isLoggedIn && showStatus === 'paused') {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Toaster position="top-center" />
+        <div className="text-center px-6 max-w-2xl mx-auto">
+          <Image 
+            src="/logo.png" 
+            alt="Second Story" 
+            width={300} 
+            height={90} 
+            className="mx-auto mb-8"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <div className="text-6xl mb-4">☕</div>
+            <h1 className="text-4xl sm:text-5xl font-light">Intermission</h1>
+            
+            <div className="border-t border-b border-gray-200 py-6 my-8">
+              <p className="text-lg text-gray-700 mb-4">Perfect time to refresh your champagne</p>
+              
+              {/* Break Timer */}
+              <div className="bg-gray-50 rounded-lg p-6">
+                <p className="text-xs tracking-[0.3em] uppercase text-gray-600 mb-4">
+                  Resuming in
+                </p>
+                <div className="flex justify-center gap-4">
+                  <div className="text-center">
+                    <div className="text-4xl font-light mb-1">
+                      {String(breakMinutes).padStart(2, '0')}
+                    </div>
+                    <p className="text-xs tracking-widest uppercase text-gray-500">
+                      Minutes
+                    </p>
+                  </div>
+                  <div className="text-4xl font-light">:</div>
+                  <div className="text-center">
+                    <div className="text-4xl font-light mb-1">
+                      {String(breakSeconds).padStart(2, '0')}
+                    </div>
+                    <p className="text-xs tracking-widest uppercase text-gray-500">
+                      Seconds
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-sm text-gray-500">We'll resume the show shortly</p>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  // ENDED - Thank you
+  if (isLoggedIn && showStatus === 'ended') {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Toaster position="top-center" />
+        <div className="text-center px-6 max-w-2xl mx-auto">
+          <Image 
+            src="/logo.png" 
+            alt="Second Story" 
+            width={300} 
+            height={90} 
+            className="mx-auto mb-8"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <Sparkles className="w-16 h-16 mx-auto text-black" />
+            <h1 className="text-4xl font-light">Thank you for experiencing Second Story</h1>
+            <div className="border-t border-b border-gray-200 py-6 my-8">
+              <p className="text-lg text-gray-700 mb-4">
+                Your wishlisted items are reserved in order of selection
+              </p>
+              <p className="text-sm text-gray-600">
+                Guests #1-10 have priority access for the next 24 hours
+              </p>
+            </div>
+            <p className="text-gray-600 mb-2">
+              Contact your personal shopper to secure your pieces
+            </p>
+            <a href="mailto:shop@secondstory.com" className="inline-block text-black underline mb-4">
+              shop@secondstory.com
+            </a>
+            <p className="text-sm text-gray-500 italic">
+              Check your email for detailed purchase instructions
+            </p>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  // LIVE - Main show interface (existing code)
+  if (isLoggedIn && showStatus === 'live') {
+    return (
+      <div className="min-h-screen bg-white text-black">
+        <Toaster position="top-center" />
       
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-b border-gray-200 safe-top shadow-sm">
@@ -799,6 +1153,27 @@ export default function ShowPage() {
           </>
         )}
       </AnimatePresence>
+    </div>
+    )
+  }
+
+  // Default: show loading
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="text-center"
+      >
+        <div className="w-16 h-16 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <Image 
+          src="/logo.png" 
+          alt="Second Story" 
+          width={150} 
+          height={45} 
+          className="opacity-90"
+        />
+      </motion.div>
     </div>
   )
 }
