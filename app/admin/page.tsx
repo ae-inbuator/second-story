@@ -27,7 +27,8 @@ import {
   Grid3X3,
   Plus,
   Mail,
-  Calendar
+  Calendar,
+  Clock
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { useWebSocket } from '@/hooks/useWebSocket'
