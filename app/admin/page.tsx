@@ -78,8 +78,11 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'control' | 'products' | 'looks' | 'analytics' | 'export'>('control')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   
-  // WebSocket connection
-  const { socket, isConnected, emit, on, off } = useWebSocket()
+  // WebSocket connection with proper URL
+  const socketUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://second-story.onrender.com'
+    : 'http://localhost:3001'
+  const { socket, isConnected, emit, on, off } = useWebSocket(socketUrl)
 
   // Initialize
   useEffect(() => {

@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bnnabuwcojrctjhnwcmj.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubmFidXdjb2pyY3RqaG53Y21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4OTQ5NjUsImV4cCI6MjA3MDQ3MDk2NX0.3tXkx5K1HLgl5sUif1_cUuXay7t-UwtU9_Z-NN4N8EA'
+// Support both NEXT_PUBLIC_ prefixed and non-prefixed variables from Vercel integration
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://bnnabuwcojrctjhnwcmj.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubmFidXdjb2pyY3RqaG53Y21qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4OTQ5NjUsImV4cCI6MjA3MDQ3MDk2NX0.3tXkx5K1HLgl5sUif1_cUuXay7t-UwtU9_Z-NN4N8EA'
 
-if (!supabaseUrl) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL')
-if (!supabaseAnonKey) throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY')
+if (!supabaseUrl) throw new Error('Missing Supabase URL - check NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL')
+if (!supabaseAnonKey) throw new Error('Missing Supabase Anon Key - check NEXT_PUBLIC_SUPABASE_ANON_KEY or SUPABASE_ANON_KEY')
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
