@@ -24,7 +24,7 @@ import {
   Download,
   Bell,
   Search,
-  Beta
+  ArrowLeft
 } from 'lucide-react'
 import { auth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -218,7 +218,7 @@ export default function AdminV2Layout({
                   href="/admin"
                   className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:text-white transition-colors"
                 >
-                  <Beta className="w-4 h-4" />
+                  <ArrowLeft className="w-4 h-4" />
                   <span>Back to Classic Admin</span>
                 </Link>
               </div>
