@@ -119,6 +119,16 @@ io.on('connection', (socket) => {
     })
   })
   
+  // Handle emoji reactions
+  socket.on('reaction', (data) => {
+    console.log('Reaction received:', data)
+    // Broadcast to all clients including sender for admin monitoring
+    io.emit('reaction', {
+      ...data,
+      timestamp: new Date().toISOString()
+    })
+  })
+  
   // Handle stats request (admin)
   socket.on('stats:request', () => {
     socket.emit('stats:updated', {
