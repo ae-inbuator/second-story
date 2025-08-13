@@ -46,16 +46,39 @@ export default function ShowControlPage() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [viewMode, setViewMode] = useState<'director' | 'preview' | 'split'>('director')
   const [isLoading, setIsLoading] = useState(true)
+  const [recentReactions, setRecentReactions] = useState<Array<{emoji: string, count: number}>>([])
+  const [totalReactions, setTotalReactions] = useState(0)
   
   // WebSocket
   const socketUrl = process.env.NODE_ENV === 'production' 
     ? 'https://second-story.onrender.com'
     : 'http://localhost:3001'
-  const { socket, isConnected, emit } = useWebSocket(socketUrl)
+  const { socket, isConnected, emit, on, off } = useWebSocket(socketUrl)
 
   useEffect(() => {
     fetchLooks()
   }, [])
+
+  // Listen for reactions
+  useEffect(() => {
+    if (!socket) return
+
+    const handleReaction = ({ emoji }: any) => {
+      setTotalReactions(prev => prev + 1)
+      setRecentReactions(prev => {
+        const existing = prev.find(r => r.emoji === emoji)
+        if (existing) {
+          return prev.map(r => r.emoji === emoji ? {...r, count: r.count + 1} : r)
+        }
+        return [...prev.slice(-4), {emoji, count: 1}]
+      })
+    }
+
+    on('reaction', handleReaction)
+    return () => {
+      off('reaction', handleReaction)
+    }
+  }, [socket, on, off])
 
   async function fetchLooks() {
     try {
@@ -350,6 +373,33 @@ export default function ShowControlPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Live Reactions */}
+            <div className="bg-gray-950 border border-gray-900 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-luxury-gold" />
+                  <h2 className="text-lg font-medium">Live Reactions</h2>
+                </div>
+                <span className="text-sm text-gray-500">{totalReactions} total</span>
+              </div>
+              
+              {recentReactions.length > 0 ? (
+                <div className="flex flex-wrap gap-3">
+                  {recentReactions.map((reaction) => (
+                    <div 
+                      key={reaction.emoji}
+                      className="flex items-center gap-2 bg-gray-900 px-3 py-2 rounded-lg"
+                    >
+                      <span className="text-2xl">{reaction.emoji}</span>
+                      <span className="text-sm text-gray-400">×{reaction.count}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No reactions yet</p>
+              )}
             </div>
 
             {/* Announcement Panel */}

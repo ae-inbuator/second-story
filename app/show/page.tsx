@@ -9,6 +9,7 @@ import { useWebSocket } from '@/hooks/useWebSocket'
 import { useOptimisticWishlist } from '@/hooks/useOptimisticWishlist'
 import { LookSkeleton } from '@/components/ui/skeleton'
 import { LuxuryImage } from '@/components/ui/luxury-image'
+import { EmojiReactions } from '@/components/EmojiReactions'
 import config from '@/lib/config'
 
 export default function ShowPage() {
@@ -33,6 +34,7 @@ export default function ShowPage() {
   const [breakEndTime, setBreakEndTime] = useState<Date | null>(null)
   const [breakMinutes, setBreakMinutes] = useState(0)
   const [breakSeconds, setBreakSeconds] = useState(0)
+  const [incomingReaction, setIncomingReaction] = useState<{ emoji: string; guestId: string } | null>(null)
   
   // Use enhanced hooks with proper URL
   const socketUrl = process.env.NODE_ENV === 'production' 
@@ -264,16 +266,27 @@ export default function ShowPage() {
       }
     }
 
+    const handleReaction = ({ emoji, guestId: senderId }: any) => {
+      // Don't show our own reactions as incoming (they're handled locally)
+      if (senderId !== guestId) {
+        setIncomingReaction({ emoji, guestId: senderId })
+        // Reset after a moment to allow multiple reactions
+        setTimeout(() => setIncomingReaction(null), 100)
+      }
+    }
+
     on('look:changed', handleLookChanged)
     on('wishlist:updated', handleWishlistUpdated)
     on('announcement', handleAnnouncement)
     on('show:status', handleStatusUpdate)
+    on('reaction', handleReaction)
 
     return () => {
       off('look:changed', handleLookChanged)
       off('wishlist:updated', handleWishlistUpdated)
       off('announcement', handleAnnouncement)
       off('show:status', handleStatusUpdate)
+      off('reaction', handleReaction)
     }
   }, [socket, on, off])
 
@@ -529,6 +542,18 @@ export default function ShowPage() {
       }
     )
   }, [products, handleAddToWishlist])
+
+  // Handle sending emoji reaction
+  const handleSendReaction = useCallback((emoji: string) => {
+    if (!guestId) return
+    
+    emit('reaction', { 
+      emoji, 
+      guestId,
+      lookId: currentLook?.id,
+      timestamp: Date.now()
+    })
+  }, [guestId, currentLook, emit])
 
   // Loading state
   if (isPageLoading) {
@@ -869,6 +894,13 @@ export default function ShowPage() {
     return (
       <div className="min-h-screen bg-white text-black">
         <Toaster position="top-center" />
+        
+        {/* Emoji Reactions */}
+        <EmojiReactions
+          onSendReaction={handleSendReaction}
+          incomingReaction={incomingReaction}
+          isConnected={isConnected}
+        />
       
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-b border-gray-200 safe-top shadow-sm">
